@@ -53,12 +53,41 @@ function transformBody(body: string, mode: ReadMode): React.ReactNode {
       "not me being lowkey obsessed with this 😭 —",
     ];
     const intro = intros[Math.floor(body.length % intros.length)];
-    const genzBody = body
-      .replace(/\bvery\b/g, "absolutely")
-      .replace(/\bgood\b/g, "bussin'")
-      .replace(/\bimportant\b/g, "a whole moment")
-      .replace(/\bsignificant\b/g, "no cap significant")
-      .replace(/\bsuccessfully\b/g, "ate and left no crumbs");
+
+    // More aggressive slangification for GenZ mode (apply to the whole body)
+    const replacements: [RegExp, string][] = [
+      [/\bvery\b/gi, "absolutely"],
+      [/\bgood\b/gi, "bussin'"],
+      [/\bimportant\b/gi, "a whole moment"],
+      [/\bsignificant\b/gi, "no cap significant"],
+      [/\bsuccessfully\b/gi, "ate and left no crumbs"],
+      [/\bwill be\b/gi, "gonna be"],
+      [/\bwill\b/gi, "gonna"],
+      [/\bis not\b/gi, "isn't"],
+      [/\bare not\b/gi, "aren't"],
+      [/\bconfirmed\b/gi, "confirmed (big flex)"],
+      [/\bannounced\b/gi, "announced, lowkey"],
+      [/\b announced\b/gi, "announced, lowkey"],
+      [/\bpercent\b/gi, "%"],
+      [/\bapproximately\b/gi, "about"],
+      [/\bin the\b/gi, "in the"],
+      [/\bIndia\b/gi, "India"],
+      [/\b(ISRO)\b/gi, "ISRO (space pog)"],
+    ];
+
+    let genzBody = body;
+    for (const [re, sub] of replacements) genzBody = genzBody.replace(re, sub);
+    // shorten long paragraphs a bit and add emojis for tone
+    genzBody = genzBody
+      .split(/\n+/)
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .map((p) => {
+        // keep paragraph but add a vibe emoji and occasionally trim
+        const trimmed = p.length > 220 ? p.slice(0, 200).trim() + "..." : p;
+        return trimmed + (Math.random() > 0.7 ? " ✨" : "");
+      })
+      .join("\n\n");
 
     return (
       <div>
@@ -78,7 +107,7 @@ function transformBody(body: string, mode: ReadMode): React.ReactNode {
           ✨ GenZ Mode
         </div>
         <p style={{ fontSize: "14.5px", color: "var(--text-secondary)", lineHeight: "1.7" }}>
-          <span style={{ fontWeight: "700", color: "var(--accent)" }}>{intro}</span> {genzBody}
+          <span style={{ fontWeight: "700", color: "var(--accent)" }}>{intro}</span> {genzBody} <span style={{ marginLeft: 6 }}>✨</span>
         </p>
       </div>
     );
@@ -126,6 +155,25 @@ function formatDate(iso: string): string {
   });
 }
 
+function transformHeadline(headline: string, mode: ReadMode): string {
+  if (mode !== "GenZ") return headline;
+
+  let h = headline
+    .replace(/\b(India)\b/gi, "$1")
+    .replace(/\b(ISRO)\b/gi, "ISRO")
+    .replace(/\b(Budget)\b/gi, "Budget")
+    .replace(/\b(Launches|Launch|Launches)\b/gi, "drops")
+    .replace(/\b(Successfully|successfully)\b/gi, "ate")
+    .replace(/\b(World|world)\b/gi, "world")
+    .trim();
+
+  // Add a short GenZ prefix/suffix
+  const prefixes = ["lowkey:", "not gonna lie:", "fr:", "hot take:", "real talk:"];
+  const prefix = prefixes[headline.length % prefixes.length];
+
+  return `${prefix} ${h} — ${["🔥", "👀", "✨"][headline.length % 3]}`;
+}
+
 interface NewsCardProps {
   item: NewsItem;
   mode: ReadMode;
@@ -138,7 +186,7 @@ export default function NewsCard({ item, mode, style }: NewsCardProps) {
   return (
     <article className="news-card" style={style}>
       {/* Image */}
-      <div style={{ position: "relative", overflow: "hidden", aspectRatio: "16/9" }}>
+      <div style={{ position: "relative", overflow: "hidden", aspectRatio: "16/9", flexShrink: 0 }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={imgError ? FALLBACK_IMAGE : item.image || FALLBACK_IMAGE}
@@ -195,7 +243,7 @@ export default function NewsCard({ item, mode, style }: NewsCardProps) {
       </div>
 
       {/* Content */}
-      <div style={{ padding: "20px" }}>
+      <div style={{ padding: "20px", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
         {/* Provider + Date */}
         <div
           style={{
@@ -223,6 +271,7 @@ export default function NewsCard({ item, mode, style }: NewsCardProps) {
 
         {/* Headline */}
         <h2
+          className="news-card-title"
           style={{
             fontFamily: "var(--font-serif)",
             fontSize: "18px",
@@ -233,7 +282,7 @@ export default function NewsCard({ item, mode, style }: NewsCardProps) {
             letterSpacing: "-0.01em",
           }}
         >
-          {item.headline}
+          {transformHeadline(item.headline, mode)}
         </h2>
 
         {/* Divider */}
@@ -248,7 +297,7 @@ export default function NewsCard({ item, mode, style }: NewsCardProps) {
         />
 
         {/* Body / transformed content */}
-        <div style={{ marginBottom: "16px" }}>
+        <div className="news-card-body" style={{ marginBottom: "16px", flex: 1, minHeight: 0 }}>
           {transformBody(item.body, mode)}
         </div>
 
@@ -282,6 +331,25 @@ export default function NewsCard({ item, mode, style }: NewsCardProps) {
       </div>
 
       <style jsx>{`
+        .news-card-title {
+          display: -webkit-box;
+          -webkit-box-orient: vertical;
+          -webkit-line-clamp: 3;
+          overflow: hidden;
+        }
+
+        .news-card-body :global(p) {
+          display: -webkit-box;
+          -webkit-box-orient: vertical;
+          -webkit-line-clamp: 7;
+          overflow: hidden;
+        }
+
+        .news-card-body :global(.axios-list) {
+          max-height: 210px;
+          overflow: hidden;
+        }
+
         .news-card:hover .card-img {
           transform: scale(1.03);
         }
