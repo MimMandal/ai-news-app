@@ -1,26 +1,25 @@
 // scripts/fetch-news.mjs
 // Run by GitHub Actions every 6 hours.
-// Fetches RSS headlines, enriches with Gemini AI, writes to /data/news.json
+// Fetches RSS headlines, optionally enriches them with Gemini AI,
+// and writes the latest data to both /data and /public/data.
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import Parser from "rss-parser";
-import { writeFileSync, readFileSync } from "fs";
+import { mkdirSync, writeFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, resolve } from "path";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// ──────────────────────────────────────────────
-// CONFIG
-// ──────────────────────────────────────────────
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY env var is not set.");
+const MAX_ARTICLES = 12;
+const DELETE_AFTER_DAYS = 6;
+const OUTPUT_PATHS = [
+  resolve(__dirname, "../data/news.json"),
+  resolve(__dirname, "../public/data/news.json"),
+];
 
-const MAX_ARTICLES = 12; // how many articles to keep
-const OUTPUT_PATH = resolve(__dirname, "../data/news.json");
-
-// RSS feeds to pull headlines from (India-focused)
 const RSS_FEEDS = [
   { url: "https://feeds.feedburner.com/ndtvnews-india-news", tags: ["politics"] },
   { url: "https://timesofindia.indiatimes.com/rssfeeds/1898055.cms", tags: ["business"] },
@@ -30,15 +29,96 @@ const RSS_FEEDS = [
   { url: "https://economictimes.indiatimes.com/rss/startup", tags: ["business", "technology"] },
 ];
 
-// ──────────────────────────────────────────────
-// HELPERS
-// ──────────────────────────────────────────────
+function decodeHtml(value) {
+  return value
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+}
+
+function stripHtml(value) {
+  return decodeHtml(value).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function isWithinRetentionWindow(pubDate) {
+  const publishedAt = new Date(pubDate);
+  if (Number.isNaN(publishedAt.getTime())) return false;
+
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - DELETE_AFTER_DAYS);
+
+  return publishedAt >= cutoff;
+}
+
+async function fetchOgImage(url) {
+  try {
+    const articleUrl = url.split("#")[0];
+    const response = await fetch(articleUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; NewsBot/1.0)",
+      },
+    });
+
+    if (!response.ok) return "";
+
+    const html = await response.text();
+    const imageMatch =
+      html.match(/<meta[^>]+property=["']og:image(?::secure_url)?["'][^>]+content=["']([^"']+)["']/i) ||
+      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image(?::secure_url)?["']/i) ||
+      html.match(/<meta[^>]+name=["']twitter:image(?::src)?["'][^>]+content=["']([^"']+)["']/i) ||
+      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image(?::src)?["']/i);
+
+    return imageMatch?.[1] ? decodeHtml(imageMatch[1].trim()) : "";
+  } catch (err) {
+    console.warn(`Failed to fetch og:image for ${url}: ${err.message}`);
+    return "";
+  }
+}
+
+async function fetchArticleMetadata(url) {
+  try {
+    const articleUrl = url.split("#")[0];
+    const response = await fetch(articleUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; NewsBot/1.0)",
+      },
+    });
+
+    if (!response.ok) {
+      return { image: "", summary: "" };
+    }
+
+    const html = await response.text();
+    const imageMatch =
+      html.match(/<meta[^>]+property=["']og:image(?::secure_url)?["'][^>]+content=["']([^"']+)["']/i) ||
+      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image(?::secure_url)?["']/i) ||
+      html.match(/<meta[^>]+name=["']twitter:image(?::src)?["'][^>]+content=["']([^"']+)["']/i) ||
+      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image(?::src)?["']/i);
+    const summaryMatch =
+      html.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']/i) ||
+      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:description["']/i) ||
+      html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i) ||
+      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']description["']/i) ||
+      html.match(/<meta[^>]+name=["']twitter:description["'][^>]+content=["']([^"']+)["']/i) ||
+      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:description["']/i);
+
+    return {
+      image: imageMatch?.[1] ? decodeHtml(imageMatch[1].trim()) : "",
+      summary: summaryMatch?.[1] ? stripHtml(summaryMatch[1].trim()) : "",
+    };
+  } catch (err) {
+    console.warn(`Failed to fetch article metadata for ${url}: ${err.message}`);
+    return { image: "", summary: "" };
+  }
+}
+
 async function fetchRSSItems() {
   const parser = new Parser({
     timeout: 10000,
     headers: {
-      "User-Agent":
-        "Mozilla/5.0 (compatible; NewsBot/1.0)",
+      "User-Agent": "Mozilla/5.0 (compatible; NewsBot/1.0)",
     },
   });
 
@@ -47,31 +127,39 @@ async function fetchRSSItems() {
   for (const feed of RSS_FEEDS) {
     try {
       const parsed = await parser.parseURL(feed.url);
-      const items = parsed.items.slice(0, 3); // top 3 per feed
+      const items = parsed.items.slice(0, 3);
+
       for (const item of items) {
-        if (item.title && item.link) {
-          results.push({
-            title: item.title.trim(),
-            link: item.link.trim(),
-            summary: item.contentSnippet?.trim() || item.content?.trim() || "",
-            tags: feed.tags,
-            pubDate: item.pubDate || new Date().toISOString(),
-            // Try to get image from enclosure or media
-            image:
-              item.enclosure?.url ||
-              item["media:content"]?.$.url ||
-              item["media:thumbnail"]?.$.url ||
-              "",
-          });
-        }
+        if (!item.title || !item.link) continue;
+        if (!isWithinRetentionWindow(item.pubDate || new Date().toISOString())) continue;
+
+        const cleanedSummary = stripHtml(item.contentSnippet?.trim() || item.content?.trim() || "");
+        const needsMetadata = !cleanedSummary || cleanedSummary.length < 40;
+        const metadata = needsMetadata ? await fetchArticleMetadata(item.link.trim()) : { image: "", summary: "" };
+        const feedImage =
+          item.enclosure?.url ||
+          item["media:content"]?.$.url ||
+          item["media:thumbnail"]?.$.url ||
+          "";
+        const image = feedImage || metadata.image || (await fetchOgImage(item.link.trim()));
+        const summary = cleanedSummary || metadata.summary;
+
+        results.push({
+          title: item.title.trim(),
+          link: item.link.trim(),
+          summary,
+          tags: feed.tags,
+          pubDate: item.pubDate || new Date().toISOString(),
+          image,
+        });
       }
     } catch (err) {
       console.warn(`Failed to fetch feed ${feed.url}: ${err.message}`);
     }
   }
 
-  // Deduplicate by title
   const seen = new Set();
+
   return results.filter((item) => {
     const key = item.title.toLowerCase().slice(0, 60);
     if (seen.has(key)) return false;
@@ -80,10 +168,25 @@ async function fetchRSSItems() {
   });
 }
 
+function toFallbackArticle(item) {
+  return {
+    headline: item.title,
+    body: item.summary || "Read the full article for more details.",
+    image: item.image || "",
+    source_url: item.link,
+    tags: item.tags,
+    date: new Date(item.pubDate).toISOString(),
+  };
+}
+
 async function enrichWithGemini(items) {
+  if (!GEMINI_API_KEY) {
+    console.warn("GEMINI_API_KEY is not set. Using RSS content without AI enrichment.");
+    return items.slice(0, MAX_ARTICLES).map(toFallbackArticle);
+  }
+
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
   const enriched = [];
 
   for (const item of items.slice(0, MAX_ARTICLES)) {
@@ -107,55 +210,46 @@ Tags should be 1-2 items from: technology, sports, politics, entertainment, busi
 
       const result = await model.generateContent(prompt);
       const text = result.response.text().trim();
-
-      // Strip possible markdown fences
       const cleaned = text.replace(/^```json\n?/, "").replace(/\n?```$/, "").trim();
       const parsed = JSON.parse(cleaned);
 
       enriched.push({
         headline: parsed.headline || item.title,
         body: parsed.body || item.summary,
-        image: item.image || `https://source.unsplash.com/800x450/?${encodeURIComponent(parsed.image_search_query || "news")}`,
+        image:
+          item.image ||
+          `https://source.unsplash.com/800x450/?${encodeURIComponent(parsed.image_search_query || "news")}`,
         source_url: item.link,
         tags: parsed.tags || item.tags,
         date: new Date(item.pubDate).toISOString(),
       });
 
-      // Rate limit: wait 1s between Gemini calls to avoid quota exhaustion
-      await new Promise((r) => setTimeout(r, 1000));
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, 1000));
     } catch (err) {
       console.warn(`Skipping article due to Gemini error: ${err.message}`);
-      // Fallback: include article without AI enrichment
-      enriched.push({
-        headline: item.title,
-        body: item.summary || "Read the full article for more details.",
-        image: item.image || "",
-        source_url: item.link,
-        tags: item.tags,
-        date: new Date(item.pubDate).toISOString(),
-      });
+      enriched.push(toFallbackArticle(item));
     }
   }
 
   return enriched;
 }
 
-// ──────────────────────────────────────────────
-// MAIN
-// ──────────────────────────────────────────────
 (async () => {
-  console.log("🔍 Fetching RSS feeds...");
+  console.log("Fetching RSS feeds...");
   const rssItems = await fetchRSSItems();
-  console.log(`✅ Got ${rssItems.length} raw articles`);
+  console.log(`Got ${rssItems.length} raw articles`);
 
-  console.log("🤖 Enriching with Gemini AI...");
+  console.log("Preparing article content...");
   const news = await enrichWithGemini(rssItems);
-  console.log(`✅ Enriched ${news.length} articles`);
+  console.log(`Prepared ${news.length} articles`);
 
-  // Sort by date descending
   news.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  writeFileSync(OUTPUT_PATH, JSON.stringify(news, null, 2), "utf-8");
-  console.log(`✅ Written to ${OUTPUT_PATH}`);
-  console.log(`📰 Total articles: ${news.length}`);
+  for (const outputPath of OUTPUT_PATHS) {
+    mkdirSync(dirname(outputPath), { recursive: true });
+    writeFileSync(outputPath, JSON.stringify(news, null, 2), "utf-8");
+    console.log(`Written to ${outputPath}`);
+  }
+
+  console.log(`Total articles: ${news.length}`);
 })();

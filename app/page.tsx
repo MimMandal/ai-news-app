@@ -9,6 +9,63 @@ import SkeletonCard from "@/components/SkeletonCard";
 import { NewsItem, ReadMode, Category } from "@/types/news";
 
 const PAGE_SIZE = 6;
+const BALANCED_TAG_ORDER = [
+  "technology",
+  "business",
+  "politics",
+  "sports",
+  "entertainment",
+];
+
+function getPrimaryTag(item: NewsItem): string {
+  return item.tags.find((tag) => BALANCED_TAG_ORDER.includes(tag.toLowerCase()))?.toLowerCase()
+    || item.tags[0]?.toLowerCase()
+    || "other";
+}
+
+function balanceNewsDistribution(items: NewsItem[]): NewsItem[] {
+  const buckets = new Map<string, NewsItem[]>();
+
+  for (const tag of BALANCED_TAG_ORDER) {
+    buckets.set(tag, []);
+  }
+
+  for (const item of items) {
+    const primaryTag = getPrimaryTag(item);
+    if (!buckets.has(primaryTag)) {
+      buckets.set(primaryTag, []);
+    }
+    buckets.get(primaryTag)?.push(item);
+  }
+
+  for (const bucket of buckets.values()) {
+    bucket.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }
+
+  const orderedTags = [
+    ...BALANCED_TAG_ORDER,
+    ...Array.from(buckets.keys()).filter((tag) => !BALANCED_TAG_ORDER.includes(tag)),
+  ];
+  const balanced: NewsItem[] = [];
+
+  while (balanced.length < items.length) {
+    let addedInRound = false;
+
+    for (const tag of orderedTags) {
+      const nextItem = buckets.get(tag)?.shift();
+      if (!nextItem) continue;
+
+      balanced.push(nextItem);
+      addedInRound = true;
+    }
+
+    if (!addedInRound) {
+      break;
+    }
+  }
+
+  return balanced;
+}
 
 export default function Home() {
   const [allNews, setAllNews] = useState<NewsItem[]>([]);
@@ -45,7 +102,11 @@ export default function Home() {
       items = items.filter((n) => n.headline.toLowerCase().includes(q));
     }
 
-    return items;
+    if (category === "All" && !search.trim()) {
+      return balanceNewsDistribution(items);
+    }
+
+    return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [allNews, category, search]);
 
   const visible = filtered.slice(0, visibleCount);

@@ -2,9 +2,8 @@ name: Fetch AI News with Gemini
 
 on:
   schedule:
-    # Runs every 6 hours
     - cron: "0 */6 * * *"
-  workflow_dispatch: # Allow manual trigger
+  workflow_dispatch:
 
 jobs:
   fetch-news:
@@ -20,19 +19,20 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: npm
 
       - name: Install dependencies
-        run: npm install @google/generative-ai node-fetch rss-parser
+        run: npm install
 
       - name: Fetch and transform news
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: node scripts/fetch-news.mjs
+        run: npm run fetch:news
 
-      - name: Commit updated news.json
+      - name: Commit updated news files
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/news.json
+          git add data/news.json public/data/news.json
           git diff --staged --quiet || git commit -m "chore: update news [$(date -u '+%Y-%m-%d %H:%M UTC')]"
           git push
