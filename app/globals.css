@@ -1,0 +1,314 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-serif: "Playfair Display", Georgia, serif;
+  --font-sans: "DM Sans", system-ui, sans-serif;
+  --bg: #faf9f7;
+  --bg-card: #ffffff;
+  --text-primary: #0f0e0c;
+  --text-secondary: #6b6860;
+  --text-muted: #a09d98;
+  --border: #e8e5e0;
+  --accent: #c8102e;
+  --accent-hover: #a00d25;
+  --tag-bg: #f0ede8;
+  --tag-text: #4a4744;
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+  --shadow-hover: 0 8px 32px rgba(0,0,0,0.10);
+}
+
+.dark {
+  --bg: #0d0c0b;
+  --bg-card: #161513;
+  --text-primary: #f0ede8;
+  --text-secondary: #9e9b96;
+  --text-muted: #6b6860;
+  --border: #2a2825;
+  --accent: #e8253f;
+  --accent-hover: #ff3d55;
+  --tag-bg: #211f1d;
+  --tag-text: #c5c0b8;
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.2);
+  --shadow-hover: 0 8px 32px rgba(0,0,0,0.4);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+/* Selection */
+::selection {
+  background: var(--accent);
+  color: white;
+}
+
+/* Skeleton animation */
+@keyframes shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--border) 25%,
+    var(--tag-bg) 50%,
+    var(--border) 75%
+  );
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite linear;
+  border-radius: 4px;
+}
+
+/* Card hover */
+.news-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-card);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  overflow: hidden;
+}
+
+.news-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+}
+
+/* Navbar */
+.navbar {
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.navbar-hidden {
+  transform: translateY(-100%);
+}
+
+/* Mode button */
+.mode-btn {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  letter-spacing: 0.01em;
+}
+
+.mode-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.mode-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+/* Category filter */
+.cat-btn {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: var(--tag-bg);
+  color: var(--tag-text);
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.cat-btn:hover {
+  background: var(--accent);
+  color: white;
+}
+
+.cat-btn.active {
+  background: var(--text-primary);
+  color: var(--bg);
+}
+
+/* Tag badge */
+.tag-badge {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--tag-bg);
+  color: var(--tag-text);
+}
+
+/* Axios mode list */
+.axios-list {
+  list-style: none;
+  padding: 0;
+}
+
+.axios-list li {
+  padding: 8px 0;
+  padding-left: 20px;
+  position: relative;
+  border-bottom: 1px solid var(--border);
+  font-size: 14.5px;
+  color: var(--text-secondary);
+}
+
+.axios-list li:last-child {
+  border-bottom: none;
+}
+
+.axios-list li::before {
+  content: "→";
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* Search input */
+.search-input {
+  background: var(--tag-bg);
+  border: 1.5px solid transparent;
+  border-radius: 999px;
+  padding: 8px 16px 8px 36px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--text-primary);
+  outline: none;
+  transition: all 0.2s ease;
+  width: 220px;
+}
+
+.search-input:focus {
+  border-color: var(--accent);
+  background: var(--bg-card);
+  width: 280px;
+}
+
+.search-input::placeholder {
+  color: var(--text-muted);
+}
+
+/* Theme toggle */
+.theme-toggle {
+  background: var(--tag-bg);
+  border: none;
+  border-radius: 999px;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.15s ease;
+  font-size: 16px;
+}
+
+.theme-toggle:hover {
+  background: var(--border);
+  color: var(--text-primary);
+}
+
+/* Fade in animation */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.4s ease both;
+}
+
+/* Stagger children */
+.stagger-children > * {
+  animation: fadeInUp 0.4s ease both;
+}
+
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 60ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 120ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 180ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 240ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 300ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 360ms; }
+.stagger-children > *:nth-child(8) { animation-delay: 420ms; }
+.stagger-children > *:nth-child(9) { animation-delay: 480ms; }
+.stagger-children > *:nth-child(10) { animation-delay: 540ms; }
+.stagger-children > *:nth-child(11) { animation-delay: 600ms; }
+.stagger-children > *:nth-child(12) { animation-delay: 660ms; }
+
+/* Read more link */
+.read-more {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: gap 0.15s ease;
+}
+
+.read-more:hover {
+  gap: 8px;
+}
+
+/* Divider accent */
+.accent-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: inline-block;
+}
