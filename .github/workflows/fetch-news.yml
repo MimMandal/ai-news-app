@@ -2,8 +2,11 @@ name: Fetch AI News with Gemini
 
 on:
   schedule:
-    - cron: "0 */6 * * *"
+    - cron: "30 2,10 * * *"
   workflow_dispatch:
+
+permissions:
+  contents: write   
 
 jobs:
   fetch-news:
@@ -11,14 +14,14 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
-          node-version: "24"
+          node-version: "20"
           cache: npm
 
       - name: Install dependencies
@@ -35,4 +38,6 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/news.json public/data/news.json
           git diff --staged --quiet || git commit -m "chore: update news [$(date -u '+%Y-%m-%d %H:%M UTC')]"
-          git push
+
+      - name: Push changes
+        run: git push

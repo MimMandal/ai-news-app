@@ -1,21 +1,30 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
-import Navbar from "@/components/Navbar";
-import NewsCard from "@/components/NewsCard";
-import ModeSwitcher from "@/components/ModeSwitcher";
-import CategoryFilter from "@/components/CategoryFilter";
+import Link from "next/link";
+import { type TouchEvent, type WheelEvent, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import ArticleBody from "@/components/ArticleBody";
 import SkeletonCard from "@/components/SkeletonCard";
-import { NewsItem, ReadMode, Category } from "@/types/news";
+import { formatNewsDate, getArticleSlug, getModeDescription, getHostname, getSourceLabel, renderHeadline } from "@/lib/news";
+import { Category, NewsItem, ReadMode, SupportedLanguage } from "@/types/news";
 
-const PAGE_SIZE = 6;
-const BALANCED_TAG_ORDER = [
-  "technology",
-  "business",
-  "politics",
-  "sports",
-  "entertainment",
+const BALANCED_TAG_ORDER = ["technology", "business", "politics", "sports", "entertainment"];
+const CATEGORIES: Category[] = ["All", "Technology", "Sports", "Politics", "Entertainment", "Business"];
+const MODES: { id: ReadMode; label: string; note: string }[] = [
+  { id: "Normal", label: "Briefing", note: "Classic newsroom language with the full summary." },
+  { id: "Kids", label: "Simple", note: "Softer vocabulary and easier pacing." },
+  { id: "GenZ", label: "Internet", note: "More playful, quick-fire phrasing." },
+  { id: "Axios", label: "Bullet", note: "Skimmable points with the takeaway first." },
 ];
+
+type SheetType = "category" | "settings" | null;
+type SwipeDirection = "next" | "prev";
+type ToastState = { key: number; message: string } | null;
+type FeedMeta = {
+  items: NewsItem[];
+  prioritizedCount: number;
+  hasSelectedCategoryStories: boolean;
+};
 
 function getPrimaryTag(item: NewsItem): string {
   return item.tags.find((tag) => BALANCED_TAG_ORDER.includes(tag.toLowerCase()))?.toLowerCase()
@@ -54,7 +63,6 @@ function balanceNewsDistribution(items: NewsItem[]): NewsItem[] {
     for (const tag of orderedTags) {
       const nextItem = buckets.get(tag)?.shift();
       if (!nextItem) continue;
-
       balanced.push(nextItem);
       addedInRound = true;
     }
@@ -67,348 +75,447 @@ function balanceNewsDistribution(items: NewsItem[]): NewsItem[] {
   return balanced;
 }
 
+function parseMode(value: string | null): ReadMode {
+  return value === "Kids" || value === "GenZ" || value === "Axios" ? value : "Normal";
+}
+
+function parseCategory(value: string | null): Category {
+  return value === "Technology" || value === "Sports" || value === "Politics" || value === "Entertainment" || value === "Business"
+    ? value
+    : "All";
+}
+
+function parseLanguage(value: string | null): SupportedLanguage {
+  return value === "hi" || value === "mr" || value === "bn" || value === "ta" || value === "te" ? value : "en";
+}
+
+function isCategoryMatch(item: NewsItem, category: Category) {
+  if (category === "All") {
+    return true;
+  }
+
+  return item.tags.some((tag) => tag.toLowerCase() === category.toLowerCase());
+}
+
+function buildFeed(items: NewsItem[], category: Category): FeedMeta {
+  const balanced = balanceNewsDistribution(items);
+
+  if (category === "All") {
+    return {
+      items: balanced,
+      prioritizedCount: 0,
+      hasSelectedCategoryStories: true,
+    };
+  }
+
+  const prioritized = items
+    .filter((item) => isCategoryMatch(item, category))
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  if (!prioritized.length) {
+    return {
+      items: balanced,
+      prioritizedCount: 0,
+      hasSelectedCategoryStories: false,
+    };
+  }
+
+  const prioritizedKeys = new Set(prioritized.map((item) => `${item.headline}-${item.source_url}`));
+  const remaining = balanced.filter((item) => !prioritizedKeys.has(`${item.headline}-${item.source_url}`));
+
+  return {
+    items: [...prioritized, ...remaining],
+    prioritizedCount: prioritized.length,
+    hasSelectedCategoryStories: true,
+  };
+}
+
+function canSwipeFromScroll(container: HTMLDivElement, deltaY: number) {
+  const scrollable = container.scrollHeight - container.clientHeight > 12;
+
+  if (!scrollable) {
+    return true;
+  }
+
+  if (deltaY > 0) {
+    return container.scrollTop + container.clientHeight >= container.scrollHeight - 2;
+  }
+
+  if (deltaY < 0) {
+    return container.scrollTop <= 2;
+  }
+
+  return false;
+}
+
 export default function Home() {
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const cardScrollRef = useRef<HTMLDivElement | null>(null);
+  const touchStartRef = useRef<number | null>(null);
+  const normalFeedToastShownRef = useRef(false);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [allNews, setAllNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [mode, setMode] = useState<ReadMode>("Normal");
-  const [category, setCategory] = useState<Category>("All");
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [mode, setMode] = useState<ReadMode>(() => parseMode(searchParams.get("mode")));
+  const [category, setCategory] = useState<Category>(() => parseCategory(searchParams.get("category")));
+  const [language] = useState<SupportedLanguage>(() => parseLanguage(searchParams.get("lang")));
+  const [activeSheet, setActiveSheet] = useState<SheetType>(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [animationDirection, setAnimationDirection] = useState<SwipeDirection>("next");
+  const [toast, setToast] = useState<ToastState>(null);
 
   useEffect(() => {
-    // Simulate async load
-    const timer = setTimeout(async () => {
+    let cancelled = false;
+
+    async function loadNews() {
       const res = await fetch("/data/news.json");
       const data: NewsItem[] = await res.json();
-      setAllNews(data);
-      setLoading(false);
-    }, 600);
-    return () => clearTimeout(timer);
+
+      if (!cancelled) {
+        setAllNews(data);
+        setLoading(false);
+      }
+    }
+
+    void loadNews();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const filtered = useMemo(() => {
-    let items = allNews;
+  const feedMeta = useMemo(() => buildFeed(allNews, category), [allNews, category]);
+  const feed = feedMeta.items;
+  const currentItem = feed[currentIndex];
+  const modeDescription = getModeDescription(mode, language);
 
-    // Category filter
-    if (category !== "All") {
-      items = items.filter((n) =>
-        n.tags.some((t) => t.toLowerCase() === category.toLowerCase())
-      );
-    }
+  const feedQuery = useMemo(() => {
+    const params = new URLSearchParams();
+    if (mode !== "Normal") params.set("mode", mode);
+    if (category !== "All") params.set("category", category);
+    if (language !== "en") params.set("lang", language);
+    return params.toString();
+  }, [category, language, mode]);
 
-    // Search filter
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      items = items.filter((n) => n.headline.toLowerCase().includes(q));
-    }
-
-    if (category === "All" && !search.trim()) {
-      return balanceNewsDistribution(items);
-    }
-
-    return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [allNews, category, search]);
-
-  const visible = filtered.slice(0, visibleCount);
-  const hasMore = visibleCount < filtered.length;
-
-  const handleLoadMore = useCallback(() => {
-    setVisibleCount((c) => c + PAGE_SIZE);
-  }, []);
-
-  // Reset visible count when filters change
   useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
-  }, [search, category]);
+    const nextUrl = feedQuery ? `${pathname}?${feedQuery}` : pathname;
+    window.history.replaceState(null, "", nextUrl);
+  }, [feedQuery, pathname]);
+
+  useEffect(() => {
+    setCurrentIndex(0);
+    normalFeedToastShownRef.current = false;
+    if (cardScrollRef.current) {
+      cardScrollRef.current.scrollTop = 0;
+    }
+  }, [category]);
+
+  useEffect(() => {
+    if (currentIndex >= feed.length && feed.length > 0) {
+      setCurrentIndex(feed.length - 1);
+    }
+  }, [currentIndex, feed.length]);
+
+  function showToast(message: string) {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
+
+    setToast({ key: Date.now(), message });
+    toastTimerRef.current = setTimeout(() => {
+      setToast(null);
+    }, 2600);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!loading && category !== "All" && !feedMeta.hasSelectedCategoryStories) {
+      showToast("No news available for this category right now. Showing the latest feed instead.");
+    }
+  }, [category, feedMeta.hasSelectedCategoryStories, loading]);
+
+  useEffect(() => {
+    if (
+      category !== "All"
+      && feedMeta.prioritizedCount > 0
+      && currentIndex >= feedMeta.prioritizedCount
+      && !normalFeedToastShownRef.current
+    ) {
+      normalFeedToastShownRef.current = true;
+      showToast("Back to the normal feed now.");
+    }
+  }, [category, currentIndex, feedMeta.prioritizedCount]);
+
+  function moveCard(direction: SwipeDirection) {
+    if (direction === "next") {
+      if (currentIndex >= feed.length - 1) {
+        showToast("You're at the end of the feed.");
+        return;
+      }
+
+      setAnimationDirection("next");
+      setCurrentIndex((value) => value + 1);
+    } else {
+      if (currentIndex <= 0) {
+        return;
+      }
+
+      setAnimationDirection("prev");
+      setCurrentIndex((value) => value - 1);
+    }
+
+    requestAnimationFrame(() => {
+      if (cardScrollRef.current) {
+        cardScrollRef.current.scrollTop = 0;
+      }
+    });
+  }
+
+  function handleWheel(event: WheelEvent<HTMLDivElement>) {
+    if (!canSwipeFromScroll(event.currentTarget, event.deltaY)) {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (Math.abs(event.deltaY) < 14) {
+      return;
+    }
+
+    moveCard(event.deltaY > 0 ? "next" : "prev");
+  }
+
+  function handleTouchStart(event: TouchEvent<HTMLDivElement>) {
+    touchStartRef.current = event.touches[0]?.clientY ?? null;
+  }
+
+  function handleTouchEnd(event: TouchEvent<HTMLDivElement>) {
+    const startY = touchStartRef.current;
+    const endY = event.changedTouches[0]?.clientY;
+    touchStartRef.current = null;
+
+    if (startY == null || endY == null) {
+      return;
+    }
+
+    const deltaY = startY - endY;
+
+    if (Math.abs(deltaY) < 48 || !cardScrollRef.current || !canSwipeFromScroll(cardScrollRef.current, deltaY)) {
+      return;
+    }
+
+    moveCard(deltaY > 0 ? "next" : "prev");
+  }
+
+  function selectCategory(nextCategory: Category) {
+    setCategory(nextCategory);
+    setActiveSheet(null);
+  }
+
+  function selectMode(nextMode: ReadMode) {
+    setMode(nextMode);
+    setActiveSheet(null);
+  }
 
   return (
-    <>
-      <Navbar search={search} onSearch={setSearch} />
-
-      <main
-        style={{
-          paddingTop: "80px",
-          minHeight: "100vh",
-          background: "var(--bg)",
-        }}
-      >
-        {/* Hero bar */}
-        <div
-          style={{
-            borderBottom: "1px solid var(--border)",
-            background: "var(--bg-card)",
-            padding: "0",
-          }}
-        >
-          <div
-            style={{
-              maxWidth: "1200px",
-              margin: "0 auto",
-              padding: "0 24px",
-              height: "48px",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              overflowX: "auto",
-              scrollbarWidth: "none",
-            }}
-          >
-            <span
-              style={{
-                fontSize: "11px",
-                fontWeight: "700",
-                color: "var(--accent)",
-                letterSpacing: "0.1em",
-                textTransform: "uppercase",
-                flexShrink: 0,
-              }}
-            >
-              Breaking
-            </span>
-            <span
-              style={{
-                width: "1px",
-                height: "16px",
-                background: "var(--border)",
-                flexShrink: 0,
-              }}
-            />
-            <p
-              style={{
-                fontSize: "13px",
-                color: "var(--text-secondary)",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              {allNews[0]?.headline || "Loading latest headlines..."}
-            </p>
+    <main className="reel-app">
+      <div className="reel-shell">
+        <header className="reel-topbar">
+          <div>
+            <p className="reel-kicker">AI News</p>
+          
           </div>
-        </div>
-
-        {/* Controls */}
-        <div
-          style={{
-            maxWidth: "1200px",
-            margin: "0 auto",
-            padding: "24px 24px 0",
-          }}
-        >
-          {/* Top section */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "flex-start",
-              justifyContent: "space-between",
-              flexWrap: "wrap",
-              gap: "16px",
-              marginBottom: "16px",
-            }}
-          >
-            <div>
-              <h1
-                style={{
-                  fontFamily: "var(--font-serif)",
-                  fontSize: "28px",
-                  fontWeight: "900",
-                  letterSpacing: "-0.03em",
-                  color: "var(--text-primary)",
-                  lineHeight: 1.1,
-                }}
-              >
-                Today's Headlines
-              </h1>
-              <p
-                style={{
-                  fontSize: "13px",
-                  color: "var(--text-muted)",
-                  marginTop: "4px",
-                }}
-              >
-                {loading
-                  ? "Loading..."
-                  : `${filtered.length} stories · AI-curated`}
-              </p>
-            </div>
-            <ModeSwitcher mode={mode} onChange={setMode} />
+          <div className="reel-status">
+            <span>{loading ? "Refreshing" : `${currentIndex + 1} / ${Math.max(feed.length, 1)}`}</span>
+            <span>{category === "All" ? "For you" : category}</span>
           </div>
+        </header>
 
-          {/* Category filter */}
-          <CategoryFilter selected={category} onChange={setCategory} />
-
-          {/* Mode description */}
-          {mode !== "Normal" && (
-            <div
-              style={{
-                marginTop: "16px",
-                padding: "10px 14px",
-                borderRadius: "8px",
-                background: "var(--tag-bg)",
-                fontSize: "13px",
-                color: "var(--text-secondary)",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-              }}
-            >
-              <span>
-                {mode === "Kids" && "🧒 Kid-friendly mode — simplified language for younger readers"}
-                {mode === "GenZ" && "🔥 GenZ mode — news the way the internet actually talks"}
-                {mode === "Axios" && "→ Axios mode — key points only, no fluff"}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* News Grid */}
-        <div
-          style={{
-            maxWidth: "1200px",
-            margin: "0 auto",
-            padding: "24px",
-          }}
-        >
+        <section className="reel-stage">
           {loading ? (
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
-                gap: "24px",
-              }}
-            >
-              {Array.from({ length: 6 }).map((_, i) => (
-                <SkeletonCard key={i} />
-              ))}
-            </div>
-          ) : filtered.length === 0 ? (
-            <div
-              style={{
-                textAlign: "center",
-                padding: "80px 24px",
-                color: "var(--text-muted)",
-              }}
-            >
-              <div style={{ fontSize: "48px", marginBottom: "16px" }}>🔍</div>
-              <h3
-                style={{
-                  fontFamily: "var(--font-serif)",
-                  fontSize: "22px",
-                  color: "var(--text-secondary)",
-                  marginBottom: "8px",
-                }}
-              >
-                No stories found
-              </h3>
-              <p style={{ fontSize: "14px" }}>
-                Try a different search term or category
-              </p>
-            </div>
-          ) : (
-            <>
-              <div
-                className="stagger-children"
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
-                  gap: "24px",
-                }}
-              >
-                {visible.map((item, i) => (
-                  <NewsCard key={`${item.headline}-${i}`} item={item} mode={mode} />
-                ))}
+            <SkeletonCard />
+          ) : currentItem ? (
+            <article className={`reel-card reel-card-${animationDirection}`} key={`${getArticleSlug(currentItem)}-${currentIndex}`}>
+              <div className="reel-card-hero">
+                {currentItem.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={currentItem.image}
+                    alt={currentItem.headline}
+                    className="reel-card-image"
+                    onError={(event) => {
+                      const target = event.currentTarget;
+                      target.style.display = "none";
+                      target.parentElement?.setAttribute("data-image-failed", "true");
+                    }}
+                  />
+                ) : null}
+                <div className="reel-card-placeholder" data-visible={!currentItem.image}>
+                  <span className="reel-card-placeholder-mark">{currentItem.tags[0]?.slice(0, 1) || "N"}</span>
+                  <p>Image unavailable</p>
+                </div>
               </div>
 
-              {/* Load more */}
-              {hasMore && (
-                <div
-                  style={{
-                    textAlign: "center",
-                    marginTop: "40px",
-                  }}
-                >
-                  <button
-                    onClick={handleLoadMore}
-                    style={{
-                      fontFamily: "var(--font-sans)",
-                      fontSize: "14px",
-                      fontWeight: "600",
-                      padding: "12px 32px",
-                      borderRadius: "999px",
-                      background: "transparent",
-                      border: "2px solid var(--border)",
-                      color: "var(--text-primary)",
-                      cursor: "pointer",
-                      transition: "all 0.15s ease",
-                      letterSpacing: "0.02em",
-                    }}
-                    onMouseEnter={(e) => {
-                      (e.target as HTMLButtonElement).style.borderColor = "var(--accent)";
-                      (e.target as HTMLButtonElement).style.color = "var(--accent)";
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.target as HTMLButtonElement).style.borderColor = "var(--border)";
-                      (e.target as HTMLButtonElement).style.color = "var(--text-primary)";
-                    }}
-                  >
-                    Load more stories →
-                  </button>
-                  <p
-                    style={{
-                      marginTop: "10px",
-                      fontSize: "12px",
-                      color: "var(--text-muted)",
-                    }}
-                  >
-                    Showing {visible.length} of {filtered.length}
-                  </p>
+              <div
+                ref={cardScrollRef}
+                className="reel-card-content"
+                onWheel={handleWheel}
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+              >
+                <div className="reel-card-meta">
+                  <span className="meta-accent">Top story</span>
+                  <span>{formatNewsDate(currentItem.date)}</span>
                 </div>
-              )}
-            </>
-          )}
-        </div>
 
-        {/* Footer */}
-        <footer
-          style={{
-            borderTop: "1px solid var(--border)",
-            padding: "32px 24px",
-            marginTop: "40px",
-            textAlign: "center",
+                <h2 className="reel-card-title">{renderHeadline(currentItem.headline, mode)}</h2>
+
+                <p className="reel-card-dek">
+                  {modeDescription || "Swipe up for the next story. Long cards will scroll first, then advance."}
+                </p>
+
+                <div className="reel-article-body">
+                  <ArticleBody item={currentItem} mode={mode} language={language} useFullBody />
+                </div>
+
+                <div className="reel-card-footer">
+                  <div className="reel-card-source">
+                    <span>{getSourceLabel(language)}</span>
+                    <strong>{getHostname(currentItem.source_url)}</strong>
+                  </div>
+
+                  <div className="reel-card-actions">
+                    <Link
+                      href={`/article/${getArticleSlug(currentItem)}${feedQuery ? `?${feedQuery}` : ""}`}
+                      className="reel-card-link"
+                    >
+                      Detail
+                    </Link>
+                    <a href={currentItem.source_url} target="_blank" rel="noopener noreferrer" className="reel-card-link primary">
+                      Source
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </article>
+          ) : (
+            <div className="empty-state reel-empty-state">
+              <h2>No stories yet</h2>
+              <p>Refresh the feed data and we'll show the newest briefings here.</p>
+            </div>
+          )}
+        </section>
+
+        <div className="reel-progress">
+          {feed.map((item, index) => (
+            <button
+              key={`${item.headline}-${index}`}
+              type="button"
+              className={`reel-progress-dot ${index === currentIndex ? "active" : ""}`}
+              onClick={() => {
+                setAnimationDirection(index > currentIndex ? "next" : "prev");
+                setCurrentIndex(index);
+                if (cardScrollRef.current) {
+                  cardScrollRef.current.scrollTop = 0;
+                }
+              }}
+              aria-label={`Open story ${index + 1}`}
+            />
+          ))}
+        </div>
+      </div>
+
+      <nav className="bottom-nav" aria-label="Feed controls">
+        <button
+          type="button"
+          className={`bottom-nav-item ${category === "All" ? "active" : ""}`}
+          onClick={() => {
+            setCategory("All");
+            setActiveSheet(null);
           }}
         >
-          <div
-            style={{
-              maxWidth: "1200px",
-              margin: "0 auto",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: "12px",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <span
-                style={{
-                  fontFamily: "var(--font-serif)",
-                  fontSize: "18px",
-                  fontWeight: "700",
-                  color: "var(--text-primary)",
-                }}
-              >
-                AI<span style={{ color: "var(--accent)" }}>News</span>
-              </span>
-              <span style={{ color: "var(--border)" }}>·</span>
-              <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>
-                Powered by Gemini · Updated via GitHub Actions
-              </span>
+          <span className="bottom-nav-label">Home</span>
+        </button>
+        <button
+          type="button"
+          className={`bottom-nav-item ${activeSheet === "category" ? "active" : ""}`}
+          onClick={() => setActiveSheet((value) => (value === "category" ? null : "category"))}
+        >
+          <span className="bottom-nav-label">Category</span>
+        </button>
+        <button
+          type="button"
+          className={`bottom-nav-item ${activeSheet === "settings" ? "active" : ""}`}
+          onClick={() => setActiveSheet((value) => (value === "settings" ? null : "settings"))}
+        >
+          <span className="bottom-nav-label">Settings</span>
+        </button>
+      </nav>
+
+      <div className={`sheet-backdrop ${activeSheet ? "visible" : ""}`} onClick={() => setActiveSheet(null)} aria-hidden={!activeSheet} />
+
+      <section className={`bottom-sheet ${activeSheet ? "open" : ""}`} aria-hidden={!activeSheet}>
+        {activeSheet === "category" ? (
+          <>
+            <div className="sheet-header">
+              <div>
+                <p className="sheet-kicker">Category</p>
+                <h2>Choose what leads your feed.</h2>
+              </div>
             </div>
-            <p style={{ fontSize: "12px", color: "var(--text-muted)" }}>
-              News is AI-curated and may not reflect the complete picture. Always verify with original sources.
-            </p>
-          </div>
-        </footer>
-      </main>
-    </>
+            <div className="sheet-list">
+              {CATEGORIES.map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  className={`sheet-option ${category === item ? "active" : ""}`}
+                  onClick={() => selectCategory(item)}
+                >
+                  <span>{item}</span>
+                  <small>{item === "All" ? "Balanced mix across the full feed." : `${item} stories first, then the usual feed.`}</small>
+                </button>
+              ))}
+            </div>
+          </>
+        ) : activeSheet === "settings" ? (
+          <>
+            <div className="sheet-header">
+              <div>
+                <p className="sheet-kicker">Reading mode</p>
+                <h2>Choose how the story is written.</h2>
+              </div>
+            </div>
+            <div className="sheet-list">
+              {MODES.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`sheet-option ${mode === item.id ? "active" : ""}`}
+                  onClick={() => selectMode(item.id)}
+                >
+                  <span>{item.label}</span>
+                  <small>{item.note}</small>
+                </button>
+              ))}
+            </div>
+          </>
+        ) : null}
+      </section>
+
+      {toast ? (
+        <div key={toast.key} className="toast">
+          {toast.message}
+        </div>
+      ) : null}
+    </main>
   );
 }

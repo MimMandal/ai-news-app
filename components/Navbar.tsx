@@ -21,11 +21,7 @@ export default function Navbar({ search, onSearch }: NavbarProps) {
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-      if (currentScrollY > lastScrollY.current && currentScrollY > 80) {
-        setHidden(true);
-      } else {
-        setHidden(false);
-      }
+      setHidden(currentScrollY > lastScrollY.current && currentScrollY > 80);
       lastScrollY.current = currentScrollY;
     };
 
@@ -34,36 +30,35 @@ export default function Navbar({ search, onSearch }: NavbarProps) {
   }, []);
 
   return (
-    <header
-      className={`navbar fixed top-0 left-0 right-0 z-50 ${hidden ? "navbar-hidden" : ""}`}
-    >
+    <header className={`navbar fixed top-0 left-0 right-0 z-50 ${hidden ? "navbar-hidden" : ""}`}>
       <div
         style={{
           maxWidth: "1200px",
           margin: "0 auto",
-          padding: "0 24px",
-          height: "60px",
+          padding: "0 20px",
+          minHeight: "60px",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
           gap: "16px",
         }}
       >
-        {/* Logo */}
         <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0 }}>
           <div
             style={{
               width: "32px",
               height: "32px",
               background: "var(--accent)",
-              borderRadius: "6px",
+              borderRadius: "8px",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: "16px",
+              fontSize: "12px",
+              fontWeight: 700,
+              color: "white",
             }}
           >
-            📰
+            AN
           </div>
           <span
             style={{
@@ -78,7 +73,6 @@ export default function Navbar({ search, onSearch }: NavbarProps) {
           </span>
         </div>
 
-        {/* Search */}
         <div style={{ position: "relative", flex: "0 1 auto" }}>
           <svg
             style={{
@@ -109,13 +103,12 @@ export default function Navbar({ search, onSearch }: NavbarProps) {
           />
         </div>
 
-        {/* Theme toggle */}
         <button
           className="theme-toggle"
           onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
           aria-label="Toggle theme"
         >
-          {mounted ? (resolvedTheme === "dark" ? "☀️" : "🌙") : "🌙"}
+          {mounted ? (resolvedTheme === "dark" ? "Li" : "Da") : "Da"}
         </button>
       </div>
     </header>

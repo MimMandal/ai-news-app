@@ -1,5 +1,5 @@
 // scripts/fetch-news.mjs
-// Run by GitHub Actions every 6 hours.
+// Run by GitHub Actions twice a day.
 // Fetches RSS headlines, optionally enriches them with Gemini AI,
 // and writes the latest data to both /data and /public/data.
 
@@ -14,6 +14,7 @@ const __dirname = dirname(__filename);
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const MAX_ARTICLES = 12;
+const GEMINI_ARTICLE_LIMIT = 8;
 const DELETE_AFTER_DAYS = 6;
 const OUTPUT_PATHS = [
   resolve(__dirname, "../data/news.json"),
@@ -22,12 +23,23 @@ const OUTPUT_PATHS = [
 
 const RSS_FEEDS = [
   { url: "https://feeds.feedburner.com/ndtvnews-india-news", tags: ["politics"] },
+  { url: "https://feeds.feedburner.com/ndtvnews-top-stories", tags: ["politics", "business"] },
   { url: "https://timesofindia.indiatimes.com/rssfeeds/1898055.cms", tags: ["business"] },
+  { url: "https://timesofindia.indiatimes.com/rssfeeds/-2128936835.cms", tags: ["politics", "business"] },
   { url: "https://www.thehindu.com/sci-tech/technology/feeder/default.rss", tags: ["technology"] },
+  { url: "https://www.thehindu.com/news/national/feeder/default.rss", tags: ["politics"] },
   { url: "https://sports.ndtv.com/rss/cricket", tags: ["sports", "cricket"] },
   { url: "https://feeds.feedburner.com/gadgets360-latest", tags: ["technology"] },
   { url: "https://economictimes.indiatimes.com/rss/startup", tags: ["business", "technology"] },
 ];
+
+function getSourceName(url) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+}
 
 function decodeHtml(value) {
   return value
@@ -77,6 +89,38 @@ async function fetchOgImage(url) {
   }
 }
 
+function extractFullArticleText(html) {
+  const articleBlockMatch =
+    html.match(/<article[\s\S]*?<\/article>/i) ||
+    html.match(/<main[\s\S]*?<\/main>/i) ||
+    html.match(/<body[\s\S]*?<\/body>/i);
+
+  const block = articleBlockMatch?.[0] || html;
+  const paragraphs = Array.from(
+    block.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi),
+    (match) => stripHtml(match[1] || "")
+  )
+    .map((text) => text.trim())
+    .filter((text) => text.length > 60)
+    .filter(
+      (text) =>
+        !/subscribe|sign in|follow us|read more|advertisement|all rights reserved|cookie/i.test(text)
+    );
+
+  const uniqueParagraphs = [];
+  const seen = new Set();
+
+  for (const paragraph of paragraphs) {
+    const key = paragraph.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    uniqueParagraphs.push(paragraph);
+    if (uniqueParagraphs.length >= 8) break;
+  }
+
+  return uniqueParagraphs.join("\n\n");
+}
+
 async function fetchArticleMetadata(url) {
   try {
     const articleUrl = url.split("#")[0];
@@ -87,7 +131,7 @@ async function fetchArticleMetadata(url) {
     });
 
     if (!response.ok) {
-      return { image: "", summary: "" };
+      return { image: "", summary: "", fullText: "" };
     }
 
     const html = await response.text();
@@ -104,13 +148,16 @@ async function fetchArticleMetadata(url) {
       html.match(/<meta[^>]+name=["']twitter:description["'][^>]+content=["']([^"']+)["']/i) ||
       html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:description["']/i);
 
+    const fullText = extractFullArticleText(html);
+
     return {
       image: imageMatch?.[1] ? decodeHtml(imageMatch[1].trim()) : "",
       summary: summaryMatch?.[1] ? stripHtml(summaryMatch[1].trim()) : "",
+      fullText,
     };
   } catch (err) {
     console.warn(`Failed to fetch article metadata for ${url}: ${err.message}`);
-    return { image: "", summary: "" };
+    return { image: "", summary: "", fullText: "" };
   }
 }
 
@@ -134,8 +181,7 @@ async function fetchRSSItems() {
         if (!isWithinRetentionWindow(item.pubDate || new Date().toISOString())) continue;
 
         const cleanedSummary = stripHtml(item.contentSnippet?.trim() || item.content?.trim() || "");
-        const needsMetadata = !cleanedSummary || cleanedSummary.length < 40;
-        const metadata = needsMetadata ? await fetchArticleMetadata(item.link.trim()) : { image: "", summary: "" };
+        const metadata = await fetchArticleMetadata(item.link.trim());
         const feedImage =
           item.enclosure?.url ||
           item["media:content"]?.$.url ||
@@ -148,9 +194,11 @@ async function fetchRSSItems() {
           title: item.title.trim(),
           link: item.link.trim(),
           summary,
+          fullText: metadata.fullText || summary,
           tags: feed.tags,
           pubDate: item.pubDate || new Date().toISOString(),
           image,
+          sourceName: getSourceName(item.link.trim()),
         });
       }
     } catch (err) {
@@ -172,8 +220,10 @@ function toFallbackArticle(item) {
   return {
     headline: item.title,
     body: item.summary || "Read the full article for more details.",
+    full_body: item.fullText || item.summary || "Read the full article for more details.",
     image: item.image || "",
     source_url: item.link,
+    source_name: item.sourceName || getSourceName(item.link),
     tags: item.tags,
     date: new Date(item.pubDate).toISOString(),
   };
@@ -189,18 +239,25 @@ async function enrichWithGemini(items) {
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
   const enriched = [];
 
-  for (const item of items.slice(0, MAX_ARTICLES)) {
+  for (const [index, item] of items.slice(0, MAX_ARTICLES).entries()) {
+    if (index >= GEMINI_ARTICLE_LIMIT) {
+      enriched.push(toFallbackArticle(item));
+      continue;
+    }
+
     try {
       const prompt = `
-You are an AI news writer. Given the following news headline and summary, write a structured JSON response.
+You are an AI news writer. Given the following news headline, summary, and article text, write a structured JSON response.
 
 HEADLINE: ${item.title}
 SUMMARY: ${item.summary || "No summary available."}
+ARTICLE: ${(item.fullText || item.summary || "No article text available.").slice(0, 6000)}
 
 Return ONLY valid JSON (no markdown, no backticks) with this exact structure:
 {
   "headline": "Clean, well-written headline (improve the original if needed)",
   "body": "A well-written 3-4 sentence news paragraph covering who, what, when, where, why. Be factual and engaging.",
+  "full_body": "A fuller 6-10 sentence article using only the provided material. Keep it factual and detailed.",
   "tags": ["tag1", "tag2"],
   "image_search_query": "A descriptive 4-6 word phrase to search for a representative stock photo"
 }
@@ -216,10 +273,12 @@ Tags should be 1-2 items from: technology, sports, politics, entertainment, busi
       enriched.push({
         headline: parsed.headline || item.title,
         body: parsed.body || item.summary,
+        full_body: parsed.full_body || item.fullText || item.summary,
         image:
           item.image ||
           `https://source.unsplash.com/800x450/?${encodeURIComponent(parsed.image_search_query || "news")}`,
         source_url: item.link,
+        source_name: item.sourceName || getSourceName(item.link),
         tags: parsed.tags || item.tags,
         date: new Date(item.pubDate).toISOString(),
       });
