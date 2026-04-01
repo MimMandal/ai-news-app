@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { type TouchEvent, type WheelEvent, useEffect, useMemo, useRef, useState } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
 import ArticleBody from "@/components/ArticleBody";
 import SkeletonCard from "@/components/SkeletonCard";
 import { formatNewsDate, getArticleSlug, getModeDescription, getHostname, getSourceLabel, renderHeadline } from "@/lib/news";
@@ -149,8 +148,6 @@ function canSwipeFromScroll(container: HTMLDivElement, deltaY: number) {
 }
 
 export default function Home() {
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
   const cardScrollRef = useRef<HTMLDivElement | null>(null);
   const touchStartRef = useRef<number | null>(null);
   const normalFeedToastShownRef = useRef(false);
@@ -158,13 +155,20 @@ export default function Home() {
 
   const [allNews, setAllNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [mode, setMode] = useState<ReadMode>(() => parseMode(searchParams.get("mode")));
-  const [category, setCategory] = useState<Category>(() => parseCategory(searchParams.get("category")));
-  const [language] = useState<SupportedLanguage>(() => parseLanguage(searchParams.get("lang")));
+  const [mode, setMode] = useState<ReadMode>("Normal");
+  const [category, setCategory] = useState<Category>("All");
+  const [language, setLanguage] = useState<SupportedLanguage>("en");
   const [activeSheet, setActiveSheet] = useState<SheetType>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [animationDirection, setAnimationDirection] = useState<SwipeDirection>("next");
   const [toast, setToast] = useState<ToastState>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setMode(parseMode(params.get("mode")));
+    setCategory(parseCategory(params.get("category")));
+    setLanguage(parseLanguage(params.get("lang")));
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -200,9 +204,9 @@ export default function Home() {
   }, [category, language, mode]);
 
   useEffect(() => {
-    const nextUrl = feedQuery ? `${pathname}?${feedQuery}` : pathname;
+    const nextUrl = feedQuery ? `/?${feedQuery}` : "/";
     window.history.replaceState(null, "", nextUrl);
-  }, [feedQuery, pathname]);
+  }, [feedQuery]);
 
   useEffect(() => {
     setCurrentIndex(0);
