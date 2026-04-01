@@ -1,3 +1,5 @@
+export type SupportedLanguage = "en" | "hi" | "mr" | "bn" | "ta" | "te";
+
 export interface NewsItem {
   headline: string;
   body: string;
@@ -11,4 +13,3 @@ export interface NewsItem {
 
 export type ReadMode = "Normal" | "Kids" | "GenZ" | "Axios";
 export type Category = "All" | "Technology" | "Sports" | "Politics" | "Entertainment" | "Business";
-export type SupportedLanguage = "en" | "hi" | "mr" | "bn" | "ta" | "te";

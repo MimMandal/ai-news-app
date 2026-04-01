@@ -4,7 +4,7 @@ import Link from "next/link";
 import { type TouchEvent, type WheelEvent, useEffect, useMemo, useRef, useState } from "react";
 import ArticleBody from "@/components/ArticleBody";
 import SkeletonCard from "@/components/SkeletonCard";
-import { formatNewsDate, getArticleSlug, getModeDescription, getHostname, getSourceLabel, renderHeadline } from "@/lib/news";
+import { formatNewsDate, getArticleSlug, getHostname, getSourceLabel, renderHeadline } from "@/lib/news";
 import { Category, NewsItem, ReadMode, SupportedLanguage } from "@/types/news";
 
 const BALANCED_TAG_ORDER = ["technology", "business", "politics", "sports", "entertainment"];
@@ -21,7 +21,6 @@ type SwipeDirection = "next" | "prev";
 type ToastState = { key: number; message: string } | null;
 type FeedMeta = {
   items: NewsItem[];
-  prioritizedCount: number;
   hasSelectedCategoryStories: boolean;
 };
 
@@ -102,29 +101,23 @@ function buildFeed(items: NewsItem[], category: Category): FeedMeta {
   if (category === "All") {
     return {
       items: balanced,
-      prioritizedCount: 0,
       hasSelectedCategoryStories: true,
     };
   }
 
-  const prioritized = items
+  const filtered = items
     .filter((item) => isCategoryMatch(item, category))
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  if (!prioritized.length) {
+  if (!filtered.length) {
     return {
-      items: balanced,
-      prioritizedCount: 0,
+      items: [],
       hasSelectedCategoryStories: false,
     };
   }
 
-  const prioritizedKeys = new Set(prioritized.map((item) => `${item.headline}-${item.source_url}`));
-  const remaining = balanced.filter((item) => !prioritizedKeys.has(`${item.headline}-${item.source_url}`));
-
   return {
-    items: [...prioritized, ...remaining],
-    prioritizedCount: prioritized.length,
+    items: filtered,
     hasSelectedCategoryStories: true,
   };
 }
@@ -150,7 +143,6 @@ function canSwipeFromScroll(container: HTMLDivElement, deltaY: number) {
 export default function Home() {
   const cardScrollRef = useRef<HTMLDivElement | null>(null);
   const touchStartRef = useRef<number | null>(null);
-  const normalFeedToastShownRef = useRef(false);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [allNews, setAllNews] = useState<NewsItem[]>([]);
@@ -193,7 +185,6 @@ export default function Home() {
   const feedMeta = useMemo(() => buildFeed(allNews, category), [allNews, category]);
   const feed = feedMeta.items;
   const currentItem = feed[currentIndex];
-  const modeDescription = getModeDescription(mode, language);
 
   const feedQuery = useMemo(() => {
     const params = new URLSearchParams();
@@ -210,7 +201,6 @@ export default function Home() {
 
   useEffect(() => {
     setCurrentIndex(0);
-    normalFeedToastShownRef.current = false;
     if (cardScrollRef.current) {
       cardScrollRef.current.scrollTop = 0;
     }
@@ -243,21 +233,9 @@ export default function Home() {
 
   useEffect(() => {
     if (!loading && category !== "All" && !feedMeta.hasSelectedCategoryStories) {
-      showToast("No news available for this category right now. Showing the latest feed instead.");
+      showToast("No news available for this category right now.");
     }
   }, [category, feedMeta.hasSelectedCategoryStories, loading]);
-
-  useEffect(() => {
-    if (
-      category !== "All"
-      && feedMeta.prioritizedCount > 0
-      && currentIndex >= feedMeta.prioritizedCount
-      && !normalFeedToastShownRef.current
-    ) {
-      normalFeedToastShownRef.current = true;
-      showToast("Back to the normal feed now.");
-    }
-  }, [category, currentIndex, feedMeta.prioritizedCount]);
 
   function moveCard(direction: SwipeDirection) {
     if (direction === "next") {
@@ -327,7 +305,6 @@ export default function Home() {
 
   function selectMode(nextMode: ReadMode) {
     setMode(nextMode);
-    setActiveSheet(null);
   }
 
   return (
@@ -383,10 +360,6 @@ export default function Home() {
 
                 <h2 className="reel-card-title">{renderHeadline(currentItem.headline, mode)}</h2>
 
-                <p className="reel-card-dek">
-                  {modeDescription || "Swipe up for the next story. Long cards will scroll first, then advance."}
-                </p>
-
                 <div className="reel-article-body">
                   <ArticleBody item={currentItem} mode={mode} language={language} useFullBody />
                 </div>
@@ -419,23 +392,6 @@ export default function Home() {
           )}
         </section>
 
-        <div className="reel-progress">
-          {feed.map((item, index) => (
-            <button
-              key={`${item.headline}-${index}`}
-              type="button"
-              className={`reel-progress-dot ${index === currentIndex ? "active" : ""}`}
-              onClick={() => {
-                setAnimationDirection(index > currentIndex ? "next" : "prev");
-                setCurrentIndex(index);
-                if (cardScrollRef.current) {
-                  cardScrollRef.current.scrollTop = 0;
-                }
-              }}
-              aria-label={`Open story ${index + 1}`}
-            />
-          ))}
-        </div>
       </div>
 
       <nav className="bottom-nav" aria-label="Feed controls">
@@ -485,7 +441,7 @@ export default function Home() {
                   onClick={() => selectCategory(item)}
                 >
                   <span>{item}</span>
-                  <small>{item === "All" ? "Balanced mix across the full feed." : `${item} stories first, then the usual feed.`}</small>
+                  <small>{item === "All" ? "Balanced mix across the full feed." : `Only ${item.toLowerCase()} stories.`}</small>
                 </button>
               ))}
             </div>

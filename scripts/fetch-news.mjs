@@ -54,6 +54,194 @@ function stripHtml(value) {
   return decodeHtml(value).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 }
 
+function sanitizeArticleHtml(html) {
+  return html
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
+    .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi, " ")
+    .replace(/<svg\b[^>]*>[\s\S]*?<\/svg>/gi, " ");
+}
+
+function normalizeArticleText(value) {
+  return decodeHtml(value)
+    .replace(/[\u200B-\u200D\uFEFF]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isBoilerplateText(text) {
+  const normalized = text.toLowerCase();
+
+  return (
+    normalized.length < 40 ||
+    /privacy policy|cookie policy|terms of use|all rights reserved|subscribe|sign in|follow us|read more|advertisement/.test(normalized) ||
+    /function\s*\(|createelement\s*\(|appendchild\s*\(|vdo\.ai|googletagmanager|scorecardresearch|doubleclick/.test(normalized) ||
+    /mutual fund calculator|download our app|newsletter|first day first show|today'?s cache|science for all|health matters|the hindu on books|view from india|data point/.test(normalized) ||
+    /photo credit:|click here|here ';p\+='|pic\.twitter\.com\/|community guidelines|commenting platform|vuukle|registered user|login to post comments|comments have to be in english/.test(normalized) ||
+    /^[a-z\s/-]{8,120}$/.test(normalized)
+  );
+}
+
+function cleanArticleText(value) {
+  const text = normalizeArticleText(stripHtml(value));
+  return isBoilerplateText(text) ? "" : text;
+}
+
+function resolveAbsoluteUrl(value, baseUrl) {
+  if (!value) return "";
+
+  try {
+    return new URL(value, baseUrl).toString();
+  } catch {
+    return value;
+  }
+}
+
+function extractMetaContent(html, selectors) {
+  for (const selector of selectors) {
+    const patterns = [
+      new RegExp(`<meta[^>]+${selector}[^>]+content=["']([^"']+)["']`, "i"),
+      new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+${selector}`, "i"),
+    ];
+
+    for (const pattern of patterns) {
+      const match = html.match(pattern);
+      if (match) {
+        const value = match[1];
+        if (value?.trim()) {
+          return decodeHtml(value.trim());
+        }
+      }
+    }
+  }
+
+  return "";
+}
+
+function isProbablyUsableImageUrl(value) {
+  if (!value) return false;
+
+  const normalized = value.trim().toLowerCase();
+
+  if (!/^https?:\/\//.test(normalized)) return false;
+  if (/google-analytics|doubleclick|googletagmanager|analytics\.js|gtm\.js/.test(normalized)) return false;
+  if (/\.(?:js|css)(?:[?#].*)?$/.test(normalized)) return false;
+  if (/logo|sprite|icon|avatar|placeholder/.test(normalized) && /\.svg(?:[?#].*)?$/.test(normalized)) return false;
+
+  return true;
+}
+
+function firstValidImageCandidate(candidates, baseUrl) {
+  for (const candidate of candidates) {
+    const resolved = resolveAbsoluteUrl(candidate, baseUrl);
+    if (isProbablyUsableImageUrl(resolved)) {
+      return resolved;
+    }
+  }
+
+  return "";
+}
+
+function extractImageFromHtml(html, baseUrl) {
+  const metaImage = extractMetaContent(html, [
+    "property=[\"']og:image(?:[:][^\"']+)?[\"']",
+    "name=[\"']twitter:image(?:[:][^\"']+)?[\"']",
+    "name=[\"']image[\"']",
+    "itemprop=[\"']image[\"']",
+  ]);
+
+  if (metaImage) {
+    const resolved = firstValidImageCandidate([metaImage], baseUrl);
+    if (resolved) {
+      return resolved;
+    }
+  }
+
+  const linkMatch =
+    html.match(/<link[^>]+rel=["']image_src["'][^>]+href=["']([^"']+)["']/i) ||
+    html.match(/<link[^>]+href=["']([^"']+)["'][^>]+rel=["']image_src["']/i);
+
+  if (linkMatch?.[1]) {
+    const resolved = firstValidImageCandidate([decodeHtml(linkMatch[1].trim())], baseUrl);
+    if (resolved) {
+      return resolved;
+    }
+  }
+
+  const jsonLdMatches = Array.from(
+    html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi),
+    (match) => match[1]
+  );
+
+  for (const block of jsonLdMatches) {
+    try {
+      const parsed = JSON.parse(block.trim());
+      const queue = Array.isArray(parsed) ? [...parsed] : [parsed];
+
+      while (queue.length) {
+        const current = queue.shift();
+        if (!current || typeof current !== "object") continue;
+
+        const imageValue = current.image ?? current.thumbnailUrl ?? current.thumbnail;
+        if (typeof imageValue === "string" && imageValue.trim()) {
+          const resolved = firstValidImageCandidate([decodeHtml(imageValue.trim())], baseUrl);
+          if (resolved) {
+            return resolved;
+          }
+        }
+
+        if (Array.isArray(imageValue)) {
+          const resolved = firstValidImageCandidate(
+            imageValue.filter((entry) => typeof entry === "string").map((entry) => decodeHtml(entry.trim())),
+            baseUrl
+          );
+          if (resolved) {
+            return resolved;
+          }
+        }
+
+        for (const value of Object.values(current)) {
+          if (value && typeof value === "object") {
+            queue.push(value);
+          }
+        }
+      }
+    } catch {
+      // Ignore invalid JSON-LD blocks and keep scanning.
+    }
+  }
+
+  const inlineImages = Array.from(
+    html.matchAll(/<img\b[^>]+src=["']([^"']+)["'][^>]*>/gi),
+    (match) => decodeHtml(match[1].trim())
+  );
+
+  return firstValidImageCandidate(inlineImages, baseUrl);
+}
+
+async function fetchArticlePage(url) {
+  const articleUrl = url.split("#")[0];
+  const response = await fetch(articleUrl, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+      "Accept-Language": "en-IN,en;q=0.9",
+      "Cache-Control": "no-cache",
+      Pragma: "no-cache",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+
+  return {
+    html: await response.text(),
+    finalUrl: response.url || articleUrl,
+  };
+}
+
 function isWithinRetentionWindow(pubDate) {
   const publishedAt = new Date(pubDate);
   if (Number.isNaN(publishedAt.getTime())) return false;
@@ -66,23 +254,8 @@ function isWithinRetentionWindow(pubDate) {
 
 async function fetchOgImage(url) {
   try {
-    const articleUrl = url.split("#")[0];
-    const response = await fetch(articleUrl, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; NewsBot/1.0)",
-      },
-    });
-
-    if (!response.ok) return "";
-
-    const html = await response.text();
-    const imageMatch =
-      html.match(/<meta[^>]+property=["']og:image(?::secure_url)?["'][^>]+content=["']([^"']+)["']/i) ||
-      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image(?::secure_url)?["']/i) ||
-      html.match(/<meta[^>]+name=["']twitter:image(?::src)?["'][^>]+content=["']([^"']+)["']/i) ||
-      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image(?::src)?["']/i);
-
-    return imageMatch?.[1] ? decodeHtml(imageMatch[1].trim()) : "";
+    const { html, finalUrl } = await fetchArticlePage(url);
+    return extractImageFromHtml(html, finalUrl);
   } catch (err) {
     console.warn(`Failed to fetch og:image for ${url}: ${err.message}`);
     return "";
@@ -90,22 +263,18 @@ async function fetchOgImage(url) {
 }
 
 function extractFullArticleText(html) {
+  const cleanedHtml = sanitizeArticleHtml(html);
   const articleBlockMatch =
-    html.match(/<article[\s\S]*?<\/article>/i) ||
-    html.match(/<main[\s\S]*?<\/main>/i) ||
-    html.match(/<body[\s\S]*?<\/body>/i);
+    cleanedHtml.match(/<article[\s\S]*?<\/article>/i) ||
+    cleanedHtml.match(/<main[\s\S]*?<\/main>/i) ||
+    cleanedHtml.match(/<body[\s\S]*?<\/body>/i);
 
-  const block = articleBlockMatch?.[0] || html;
+  const block = articleBlockMatch?.[0] || cleanedHtml;
   const paragraphs = Array.from(
     block.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi),
-    (match) => stripHtml(match[1] || "")
+    (match) => cleanArticleText(match[1] || "")
   )
-    .map((text) => text.trim())
-    .filter((text) => text.length > 60)
-    .filter(
-      (text) =>
-        !/subscribe|sign in|follow us|read more|advertisement|all rights reserved|cookie/i.test(text)
-    );
+    .filter((text) => text.length > 60);
 
   const uniqueParagraphs = [];
   const seen = new Set();
@@ -123,36 +292,19 @@ function extractFullArticleText(html) {
 
 async function fetchArticleMetadata(url) {
   try {
-    const articleUrl = url.split("#")[0];
-    const response = await fetch(articleUrl, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; NewsBot/1.0)",
-      },
-    });
-
-    if (!response.ok) {
-      return { image: "", summary: "", fullText: "" };
-    }
-
-    const html = await response.text();
-    const imageMatch =
-      html.match(/<meta[^>]+property=["']og:image(?::secure_url)?["'][^>]+content=["']([^"']+)["']/i) ||
-      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image(?::secure_url)?["']/i) ||
-      html.match(/<meta[^>]+name=["']twitter:image(?::src)?["'][^>]+content=["']([^"']+)["']/i) ||
-      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image(?::src)?["']/i);
-    const summaryMatch =
-      html.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']/i) ||
-      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:description["']/i) ||
-      html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i) ||
-      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']description["']/i) ||
-      html.match(/<meta[^>]+name=["']twitter:description["'][^>]+content=["']([^"']+)["']/i) ||
-      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:description["']/i);
+    const { html, finalUrl } = await fetchArticlePage(url);
+    const image = extractImageFromHtml(html, finalUrl);
+    const summary = extractMetaContent(html, [
+      "property=[\"']og:description[\"']",
+      "name=[\"']description[\"']",
+      "name=[\"']twitter:description[\"']",
+    ]);
 
     const fullText = extractFullArticleText(html);
 
     return {
-      image: imageMatch?.[1] ? decodeHtml(imageMatch[1].trim()) : "",
-      summary: summaryMatch?.[1] ? stripHtml(summaryMatch[1].trim()) : "",
+      image,
+      summary: summary ? cleanArticleText(summary) : "",
       fullText,
     };
   } catch (err) {
@@ -180,7 +332,7 @@ async function fetchRSSItems() {
         if (!item.title || !item.link) continue;
         if (!isWithinRetentionWindow(item.pubDate || new Date().toISOString())) continue;
 
-        const cleanedSummary = stripHtml(item.contentSnippet?.trim() || item.content?.trim() || "");
+        const cleanedSummary = cleanArticleText(item.contentSnippet?.trim() || item.content?.trim() || "");
         const metadata = await fetchArticleMetadata(item.link.trim());
         const feedImage =
           item.enclosure?.url ||

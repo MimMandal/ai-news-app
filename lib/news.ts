@@ -197,19 +197,37 @@ export function getSourceLabel(language: SupportedLanguage) {
   return SOURCE_LABELS[language];
 }
 
+function decodeHtmlEntities(value: string) {
+  return value
+    .replace(/&#039;|&#39;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function renderHeadline(headline: string, mode: ReadMode) {
-  if (mode !== "GenZ") return headline;
-  return stylizeForGenZ(headline, "").headline;
+  const normalizedHeadline = decodeHtmlEntities(headline);
+  if (mode !== "GenZ") return normalizedHeadline;
+  return stylizeForGenZ(normalizedHeadline, "").headline;
 }
 
 export function renderBody(item: NewsItem, mode: ReadMode, language: SupportedLanguage): RenderedBody {
   const badge = `${getModeLabel(mode, language)} . ${LANGUAGE_LABELS[language]}`;
+  const normalizedItem = {
+    ...item,
+    headline: decodeHtmlEntities(item.headline),
+    body: decodeHtmlEntities(item.body),
+  };
 
   if (mode === "Kids") {
     return {
       kind: "paragraph",
       badge,
-      text: simplifyForKids(item.body),
+      text: simplifyForKids(normalizedItem.body),
     };
   }
 
@@ -217,7 +235,7 @@ export function renderBody(item: NewsItem, mode: ReadMode, language: SupportedLa
     return {
       kind: "paragraph",
       badge,
-      text: stylizeForGenZ(item.headline, item.body).body,
+      text: stylizeForGenZ(normalizedItem.headline, normalizedItem.body).body,
     };
   }
 
@@ -226,13 +244,13 @@ export function renderBody(item: NewsItem, mode: ReadMode, language: SupportedLa
       kind: "bullets",
       badge,
       intro: language === "en" ? "Why it matters" : getModeLabel(mode, language),
-      items: axiosBullets(item.body),
+      items: axiosBullets(normalizedItem.body),
     };
   }
 
   return {
     kind: "paragraph",
     badge,
-    text: item.body,
+    text: normalizedItem.body,
   };
 }
