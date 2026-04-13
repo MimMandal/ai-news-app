@@ -131,6 +131,17 @@ button {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: #1a1510;
+}
+
+.reel-app-inner {
+  width: 100%;
+  max-width: 480px;
+  height: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background: var(--bg-card-solid);
 }
 
@@ -387,10 +398,10 @@ button {
 /* ── Bottom nav — full-width bar ── */
 
 .bottom-nav {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  flex-shrink: 0;
   z-index: 30;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -399,8 +410,6 @@ button {
   padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid rgba(73, 52, 41, 0.08);
   background: rgba(255, 252, 247, 0.94);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
 }
 
 .bottom-nav-item {
