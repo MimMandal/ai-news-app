@@ -5,7 +5,7 @@
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import Parser from "rss-parser";
-import { mkdirSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, resolve } from "path";
 
@@ -445,16 +445,72 @@ Tags should be 1-2 items from: technology, sports, politics, entertainment, busi
   return enriched;
 }
 
+function loadExistingArticles() {
+  for (const outputPath of OUTPUT_PATHS) {
+    if (existsSync(outputPath)) {
+      try {
+        const data = JSON.parse(readFileSync(outputPath, "utf-8"));
+        if (Array.isArray(data)) {
+          console.log(`Loaded ${data.length} existing articles from ${outputPath}`);
+          return data;
+        }
+      } catch {
+        // Ignore corrupt files, start fresh.
+      }
+    }
+  }
+  return [];
+}
+
+function mergeArticles(existing, incoming) {
+  const seen = new Set();
+  const merged = [];
+
+  // Add incoming first (they take priority)
+  for (const item of incoming) {
+    const key = item.headline.toLowerCase().slice(0, 60);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(item);
+  }
+
+  // Add existing articles that aren't duplicates
+  for (const item of existing) {
+    const key = item.headline.toLowerCase().slice(0, 60);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(item);
+  }
+
+  // Remove articles older than retention window
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - DELETE_AFTER_DAYS);
+
+  const retained = merged.filter((item) => {
+    const date = new Date(item.date);
+    return !Number.isNaN(date.getTime()) && date >= cutoff;
+  });
+
+  // Sort latest first
+  retained.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  return retained;
+}
+
 (async () => {
+  console.log("Loading existing articles...");
+  const existing = loadExistingArticles();
+
   console.log("Fetching RSS feeds...");
   const rssItems = await fetchRSSItems();
   console.log(`Got ${rssItems.length} raw articles`);
 
   console.log("Preparing article content...");
-  const news = await enrichWithGemini(rssItems);
-  console.log(`Prepared ${news.length} articles`);
+  const freshNews = await enrichWithGemini(rssItems);
+  console.log(`Prepared ${freshNews.length} new articles`);
 
-  news.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const news = mergeArticles(existing, freshNews);
+  console.log(`Total after merge: ${news.length} (kept articles from last ${DELETE_AFTER_DAYS} days)`);
 
   for (const outputPath of OUTPUT_PATHS) {
     mkdirSync(dirname(outputPath), { recursive: true });

@@ -25,7 +25,6 @@ export default function ArticleBody({
   if (content.kind === "bullets") {
     return (
       <div className={clamp ? "body-clamp" : undefined}>
-        {content.badge ? <div className="mode-badge">{content.badge}</div> : null}
         {content.intro ? <div className="article-kicker">{content.intro}</div> : null}
         <ul className="axios-list">
           {content.items.map((sentence, index) => (
@@ -38,7 +37,6 @@ export default function ArticleBody({
 
   return (
     <div className={clamp ? "body-clamp" : undefined}>
-      {content.badge ? <div className="mode-badge">{content.badge}</div> : null}
       <p className="article-copy">{content.text}</p>
     </div>
   );
