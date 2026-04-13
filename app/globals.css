@@ -31,15 +31,16 @@ html {
 }
 
 body {
-  min-height: 100vh;
-  background:
-    radial-gradient(circle at top, rgba(255, 255, 255, 0.72), transparent 24%),
-    radial-gradient(circle at bottom left, rgba(183, 74, 47, 0.08), transparent 28%),
-    linear-gradient(180deg, #fcf8f1 0%, var(--bg) 28%, #ece4d8 100%);
+  min-height: 100dvh;
+  background: var(--bg-card-solid);
   color: var(--text-primary);
   font-family: var(--font-body), Georgia, serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+body:has(.reel-app) {
+  overflow: hidden;
 }
 
 a {
@@ -68,8 +69,8 @@ button {
 }
 
 ::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
+  width: 4px;
+  height: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -77,38 +78,31 @@ button {
   border-radius: 999px;
 }
 
+/* ── Animations ── */
+
 @keyframes shimmer {
-  0% {
-    background-position: -600px 0;
-  }
-
-  100% {
-    background-position: 600px 0;
-  }
+  0% { background-position: -600px 0; }
+  100% { background-position: 600px 0; }
 }
 
-@keyframes cardEnterNext {
-  from {
-    opacity: 0;
-    transform: translateY(24px) scale(0.985);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+@keyframes slideOutUp {
+  from { transform: translateY(0); }
+  to { transform: translateY(-100%); }
 }
 
-@keyframes cardEnterPrev {
-  from {
-    opacity: 0;
-    transform: translateY(-24px) scale(0.985);
-  }
+@keyframes slideInUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
 
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+@keyframes slideOutDown {
+  from { transform: translateY(0); }
+  to { transform: translateY(100%); }
+}
+
+@keyframes slideInDown {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
 }
 
 @keyframes toastIn {
@@ -116,7 +110,6 @@ button {
     opacity: 0;
     transform: translate(-50%, 18px);
   }
-
   to {
     opacity: 1;
     transform: translate(-50%, 0);
@@ -130,25 +123,17 @@ button {
   border-radius: 18px;
 }
 
+/* ── Reel app — fullscreen ── */
+
 .reel-app {
-  min-height: 100vh;
-  padding: 18px 14px 112px;
-}
-
-.reel-shell {
-  width: min(100%, 460px);
-  margin: 0 auto;
-}
-
-.reel-topbar {
+  position: fixed;
+  inset: 0;
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 18px;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-card-solid);
 }
 
-.reel-kicker,
 .meta-accent,
 .sheet-kicker,
 .article-section-label,
@@ -168,50 +153,55 @@ button {
   letter-spacing: -0.04em;
 }
 
-.reel-title {
-  font-size: clamp(2rem, 7vw, 2.8rem);
-  line-height: 0.94;
-  max-width: 9ch;
+/* ── Viewport — holds cards ── */
+
+.reel-viewport {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
 }
 
-.reel-status {
-  display: grid;
-  gap: 7px;
-  text-align: right;
-  color: var(--text-tertiary);
-  font-size: 0.75rem;
-}
-
-.reel-stage {
-  min-height: calc(100vh - 220px);
-}
+/* ── Card — fullscreen, flex column ── */
 
 .reel-card {
-  min-height: calc(100vh - 220px);
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 32px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), var(--bg-card-solid));
-  box-shadow: var(--shadow-soft);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card-solid);
+  will-change: transform;
 }
 
-.reel-card-next {
-  animation: cardEnterNext 260ms ease;
+/* Slide transition classes */
+.reel-card-exit-up {
+  animation: slideOutUp 420ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  z-index: 1;
 }
 
-.reel-card-prev {
-  animation: cardEnterPrev 260ms ease;
+.reel-card-enter-up {
+  animation: slideInUp 420ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  z-index: 2;
 }
+
+.reel-card-exit-down {
+  animation: slideOutDown 420ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  z-index: 1;
+}
+
+.reel-card-enter-down {
+  animation: slideInDown 420ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  z-index: 2;
+}
+
+/* ── Hero image — fixed at top, does not scroll ── */
 
 .reel-card-hero {
   position: relative;
-  aspect-ratio: 16 / 9;
+  flex-shrink: 0;
+  height: 38vh;
+  min-height: 220px;
+  max-height: 380px;
   overflow: hidden;
-  border-bottom: 1px solid var(--line);
   background:
     linear-gradient(135deg, rgba(183, 74, 47, 0.18), rgba(255, 255, 255, 0.12)),
     linear-gradient(180deg, #d9c4b3 0%, #ede3d8 100%);
@@ -258,11 +248,16 @@ button {
   text-transform: uppercase;
 }
 
-.reel-card-content {
+/* ── Scrollable content area ── */
+
+.reel-card-scroll {
+  flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 20px 18px 24px;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 20px 20px 120px;
+  background: var(--bg-card-solid);
 }
 
 .reel-card-meta,
@@ -278,8 +273,8 @@ button {
 
 .reel-card-title {
   margin-top: 12px;
-  font-size: clamp(1.8rem, 7vw, 2.5rem);
-  line-height: 1;
+  font-size: clamp(1.7rem, 6vw, 2.4rem);
+  line-height: 1.05;
 }
 
 .reel-card-dek,
@@ -389,66 +384,42 @@ button {
   transform: translateY(-1px);
 }
 
-.reel-progress {
-  display: flex;
-  gap: 6px;
-  overflow-x: auto;
-  padding: 14px 4px 2px;
-  scrollbar-width: none;
-}
-
-.reel-progress::-webkit-scrollbar {
-  display: none;
-}
-
-.reel-progress-dot {
-  flex: 0 0 auto;
-  width: 22px;
-  height: 4px;
-  border-radius: 999px;
-  background: rgba(31, 23, 18, 0.14);
-  transition: width 180ms ease, background 180ms ease;
-}
-
-.reel-progress-dot.active {
-  width: 44px;
-  background: var(--text-primary);
-}
+/* ── Bottom nav — full-width bar ── */
 
 .bottom-nav {
   position: fixed;
-  left: 50%;
-  bottom: 16px;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 30;
-  width: min(calc(100% - 24px), 460px);
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  padding: 10px;
-  border: 1px solid rgba(73, 52, 41, 0.12);
-  border-radius: 28px;
-  background: rgba(255, 252, 247, 0.88);
+  gap: 4px;
+  padding: 8px 16px;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid rgba(73, 52, 41, 0.08);
+  background: rgba(255, 252, 247, 0.94);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  box-shadow: var(--shadow-card);
 }
 
 .bottom-nav-item {
-  min-height: 50px;
-  border-radius: 18px;
+  min-height: 46px;
+  border-radius: 14px;
   color: var(--text-secondary);
 }
 
 .bottom-nav-item.active {
-  background: rgba(31, 23, 18, 0.08);
+  background: rgba(31, 23, 18, 0.06);
   color: var(--text-primary);
 }
 
 .bottom-nav-label {
-  font-size: 0.92rem;
+  font-size: 0.88rem;
   font-weight: 600;
 }
+
+/* ── Sheets ── */
 
 .sheet-backdrop {
   position: fixed;
@@ -473,6 +444,7 @@ button {
   width: min(100%, 520px);
   transform: translate(-50%, calc(100% + 24px));
   padding: 18px 18px 28px;
+  padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
   border-radius: 28px 28px 0 0;
   background: #fffdf8;
   box-shadow: 0 -12px 42px rgba(44, 28, 18, 0.18);
@@ -525,10 +497,12 @@ button {
   line-height: 1.5;
 }
 
+/* ── Toast ── */
+
 .toast {
   position: fixed;
   left: 50%;
-  bottom: 92px;
+  bottom: 80px;
   z-index: 45;
   max-width: min(calc(100% - 32px), 380px);
   padding: 14px 16px;
@@ -539,6 +513,8 @@ button {
   box-shadow: 0 18px 36px rgba(31, 23, 18, 0.24);
   animation: toastIn 180ms ease;
 }
+
+/* ── Empty state ── */
 
 .empty-state,
 .article-empty,
@@ -552,6 +528,8 @@ button {
   box-shadow: var(--shadow-card);
 }
 
+/* ── Article detail page ── */
+
 .page-frame,
 .article-page-frame {
   width: min(100%, 920px);
@@ -563,6 +541,10 @@ button {
 .article-shell {
   min-height: 100vh;
   padding: 26px 0 48px;
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.72), transparent 24%),
+    radial-gradient(circle at bottom left, rgba(183, 74, 47, 0.08), transparent 28%),
+    linear-gradient(180deg, #fcf8f1 0%, var(--bg) 28%, #ece4d8 100%);
 }
 
 .article-detail-card {
@@ -609,6 +591,8 @@ button {
   gap: 18px;
   flex-wrap: wrap;
 }
+
+/* ── Reading controls ── */
 
 .reading-controls {
   display: grid;
@@ -670,18 +654,15 @@ button {
   overflow: hidden;
 }
 
+/* ── Responsive ── */
+
 @media (min-width: 700px) {
-  .reel-app {
-    padding-top: 24px;
+  .reel-card-scroll {
+    padding: 24px 28px 120px;
   }
 
-  .reel-stage,
-  .reel-card {
-    min-height: calc(100vh - 240px);
-  }
-
-  .reel-card-content {
-    padding: 24px 22px 28px;
+  .reel-card-hero {
+    max-height: 440px;
   }
 }
 

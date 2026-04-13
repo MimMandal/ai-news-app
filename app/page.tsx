@@ -17,7 +17,6 @@ const MODES: { id: ReadMode; label: string; note: string }[] = [
 ];
 
 type SheetType = "category" | "settings" | null;
-type SwipeDirection = "next" | "prev";
 type ToastState = { key: number; message: string } | null;
 type FeedMeta = {
   items: NewsItem[];
@@ -144,6 +143,7 @@ export default function Home() {
   const cardScrollRef = useRef<HTMLDivElement | null>(null);
   const touchStartRef = useRef<number | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const transitionLockRef = useRef(false);
 
   const [allNews, setAllNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -152,8 +152,8 @@ export default function Home() {
   const [language, setLanguage] = useState<SupportedLanguage>("en");
   const [activeSheet, setActiveSheet] = useState<SheetType>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [animationDirection, setAnimationDirection] = useState<SwipeDirection>("next");
   const [toast, setToast] = useState<ToastState>(null);
+  const [transition, setTransition] = useState<"next" | "prev" | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -237,23 +237,31 @@ export default function Home() {
     }
   }, [category, feedMeta.hasSelectedCategoryStories, loading]);
 
-  function moveCard(direction: SwipeDirection) {
+  function moveCard(direction: "next" | "prev") {
+    if (transitionLockRef.current) return;
+
     if (direction === "next") {
       if (currentIndex >= feed.length - 1) {
-        showToast("You're at the end of the feed.");
+        showToast("You\u2019re at the end of the feed.");
         return;
       }
-
-      setAnimationDirection("next");
-      setCurrentIndex((value) => value + 1);
     } else {
       if (currentIndex <= 0) {
         return;
       }
-
-      setAnimationDirection("prev");
-      setCurrentIndex((value) => value - 1);
     }
+
+    transitionLockRef.current = true;
+    setTransition(direction);
+  }
+
+  function handleAnimationEnd() {
+    if (!transition) return;
+
+    const nextIndex = transition === "next" ? currentIndex + 1 : currentIndex - 1;
+    setCurrentIndex(nextIndex);
+    setTransition(null);
+    transitionLockRef.current = false;
 
     requestAnimationFrame(() => {
       if (cardScrollRef.current) {
@@ -263,6 +271,8 @@ export default function Home() {
   }
 
   function handleWheel(event: WheelEvent<HTMLDivElement>) {
+    if (transitionLockRef.current) return;
+
     if (!canSwipeFromScroll(event.currentTarget, event.deltaY)) {
       return;
     }
@@ -307,91 +317,102 @@ export default function Home() {
     setMode(nextMode);
   }
 
+  function renderCardContent(item: NewsItem, attachRef: boolean, attachHandlers: boolean) {
+    return (
+      <>
+        <div className="reel-card-hero">
+          {item.image ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={item.image}
+              alt={item.headline}
+              className="reel-card-image"
+              onError={(event) => {
+                const target = event.currentTarget;
+                target.style.display = "none";
+                target.parentElement?.setAttribute("data-image-failed", "true");
+              }}
+            />
+          ) : null}
+          <div className="reel-card-placeholder" data-visible={!item.image}>
+            <span className="reel-card-placeholder-mark">{item.tags[0]?.slice(0, 1) || "N"}</span>
+            <p>Image unavailable</p>
+          </div>
+        </div>
+
+        <div
+          ref={attachRef ? cardScrollRef : undefined}
+          className="reel-card-scroll"
+          onWheel={attachHandlers ? handleWheel : undefined}
+          onTouchStart={attachHandlers ? handleTouchStart : undefined}
+          onTouchEnd={attachHandlers ? handleTouchEnd : undefined}
+        >
+          <div className="reel-card-meta">
+            <span>{formatNewsDate(item.date)}</span>
+          </div>
+
+          <h2 className="reel-card-title">{renderHeadline(item.headline, mode)}</h2>
+
+          <div className="reel-article-body">
+            <ArticleBody item={item} mode={mode} language={language} useFullBody />
+          </div>
+
+          <div className="reel-card-footer">
+            <div className="reel-card-source">
+              <span>{getSourceLabel(language)}</span>
+              <strong>{getHostname(item.source_url)}</strong>
+            </div>
+
+            <div className="reel-card-actions">
+              <Link
+                href={`/article/${getArticleSlug(item)}${feedQuery ? `?${feedQuery}` : ""}`}
+                className="reel-card-link"
+              >
+                Detail
+              </Link>
+              <a href={item.source_url} target="_blank" rel="noopener noreferrer" className="reel-card-link primary">
+                Source
+              </a>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  const prevItem = feed[currentIndex - 1];
+  const nextItem = feed[currentIndex + 1];
+
+  const exitClass = transition === "next" ? "reel-card-exit-up" : transition === "prev" ? "reel-card-exit-down" : "";
+  const enterClass = transition === "next" ? "reel-card-enter-up" : transition === "prev" ? "reel-card-enter-down" : "";
+  const incomingItem = transition === "next" ? nextItem : transition === "prev" ? prevItem : null;
+
   return (
     <main className="reel-app">
-      <div className="reel-shell">
-        <header className="reel-topbar">
-          <div>
-            <p className="reel-kicker">AI News</p>
-          
-          </div>
-          <div className="reel-status">
-            <span>{loading ? "Refreshing" : `${currentIndex + 1} / ${Math.max(feed.length, 1)}`}</span>
-            <span>{category === "All" ? "For you" : category}</span>
-          </div>
-        </header>
-
-        <section className="reel-stage">
-          {loading ? (
-            <SkeletonCard />
-          ) : currentItem ? (
-            <article className={`reel-card reel-card-${animationDirection}`} key={`${getArticleSlug(currentItem)}-${currentIndex}`}>
-              <div className="reel-card-hero">
-                {currentItem.image ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={currentItem.image}
-                    alt={currentItem.headline}
-                    className="reel-card-image"
-                    onError={(event) => {
-                      const target = event.currentTarget;
-                      target.style.display = "none";
-                      target.parentElement?.setAttribute("data-image-failed", "true");
-                    }}
-                  />
-                ) : null}
-                <div className="reel-card-placeholder" data-visible={!currentItem.image}>
-                  <span className="reel-card-placeholder-mark">{currentItem.tags[0]?.slice(0, 1) || "N"}</span>
-                  <p>Image unavailable</p>
-                </div>
-              </div>
-
-              <div
-                ref={cardScrollRef}
-                className="reel-card-content"
-                onWheel={handleWheel}
-                onTouchStart={handleTouchStart}
-                onTouchEnd={handleTouchEnd}
-              >
-                <div className="reel-card-meta">
-                  <span className="meta-accent">Top story</span>
-                  <span>{formatNewsDate(currentItem.date)}</span>
-                </div>
-
-                <h2 className="reel-card-title">{renderHeadline(currentItem.headline, mode)}</h2>
-
-                <div className="reel-article-body">
-                  <ArticleBody item={currentItem} mode={mode} language={language} useFullBody />
-                </div>
-
-                <div className="reel-card-footer">
-                  <div className="reel-card-source">
-                    <span>{getSourceLabel(language)}</span>
-                    <strong>{getHostname(currentItem.source_url)}</strong>
-                  </div>
-
-                  <div className="reel-card-actions">
-                    <Link
-                      href={`/article/${getArticleSlug(currentItem)}${feedQuery ? `?${feedQuery}` : ""}`}
-                      className="reel-card-link"
-                    >
-                      Detail
-                    </Link>
-                    <a href={currentItem.source_url} target="_blank" rel="noopener noreferrer" className="reel-card-link primary">
-                      Source
-                    </a>
-                  </div>
-                </div>
-              </div>
+      <div className="reel-viewport">
+        {loading ? (
+          <SkeletonCard />
+        ) : currentItem ? (
+          <>
+            <article className={`reel-card ${exitClass}`}>
+              {renderCardContent(currentItem, true, !transition)}
             </article>
-          ) : (
-            <div className="empty-state reel-empty-state">
-              <h2>No stories yet</h2>
-              <p>Refresh the feed data and we'll show the newest briefings here.</p>
-            </div>
-          )}
-        </section>
 
+            {transition && incomingItem && (
+              <article
+                className={`reel-card ${enterClass}`}
+                onAnimationEnd={handleAnimationEnd}
+              >
+                {renderCardContent(incomingItem, false, false)}
+              </article>
+            )}
+          </>
+        ) : (
+          <div className="empty-state reel-empty-state">
+            <h2>No stories yet</h2>
+            <p>Refresh the feed data and we&apos;ll show the newest briefings here.</p>
+          </div>
+        )}
       </div>
 
       <nav className="bottom-nav" aria-label="Feed controls">

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc -l /Users/Gaurav.Sharma4/Desktop/ai-news-app/components/*.tsx)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(npx next:*)"
+    ]
+  }
+}
