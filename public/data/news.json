@@ -1,5 +1,155 @@
 [
   {
+    "headline": "Heritage Mustn't Be Lost To Development: Goa Chief Minister Pramod Sawant",
+    "body": "Read the full article for more details.",
+    "full_body": "Read the full article for more details.",
+    "image": "",
+    "source_url": "https://www.ndtv.com/goa-news/heritage-mustnt-be-lost-to-development-goa-chief-minister-pramod-sawant-11851358#publisher=newsstand",
+    "source_name": "ndtv.com",
+    "tags": [
+      "politics",
+      "business"
+    ],
+    "date": "2026-08-01T04:55:14.000Z"
+  },
+  {
+    "headline": "Chinese Researchers Used OpenAI, Anthropic Models To Train Domestic AI: Report",
+    "body": "The documents show widespread use of a technique known as \"model distillation,\" in which outputs from a powerful AI system are used to train smaller, specialised models that can be deployed locally",
+    "full_body": "The documents show widespread use of a technique known as \"model distillation,\" in which outputs from a powerful AI system are used to train smaller, specialised models that can be deployed locally",
+    "image": "",
+    "source_url": "https://www.ndtv.com/world-news/chinese-military-researchers-used-us-artificial-intelligence-models-openai-anthropic-models-to-train-domestic-ai-report-11851264#publisher=newsstand",
+    "source_name": "ndtv.com",
+    "tags": [
+      "politics",
+      "business"
+    ],
+    "date": "2026-08-01T04:25:25.000Z"
+  },
+  {
+    "headline": "IIT Kanpur Launches 6-Month Online Data Science And Machine Learning Course",
+    "body": "IIT Kanpur has introduced a six-month online Data Science and Machine Learning course for professionals. This offers practical AI skills and industry-focused learning.",
+    "full_body": "IIT Kanpur has introduced a six-month online Data Science and Machine Learning course for professionals. This offers practical AI skills and industry-focused learning.",
+    "image": "",
+    "source_url": "https://www.ndtv.com/education/iit-kanpur-launches-6-month-online-data-science-and-machine-learning-course-11851183#publisher=newsstand",
+    "source_name": "ndtv.com",
+    "tags": [
+      "politics"
+    ],
+    "date": "2026-08-01T04:20:31.000Z"
+  },
+  {
+    "headline": "PM Modi to inaugurate Rs 5,640-crore Alluri Sitarama Raju International Airport in Andhra Pradesh — See pics",
+    "body": "Prime Minister Narendra Modi inaugurates the Alluri Sitarama Raju International Airport on Saturday. He will also lay foundation stones for significant development projects worth over seventeen thousand nine hundred crore. The new airport is designed to handle six million passengers annually and boost regional connectivity. Foundation stone will be laid for Andhra Pradesh's first semiconductor manufacturing facility.",
+    "full_body": "Prime Minister Narendra Modi inaugurates the Alluri Sitarama Raju International Airport on Saturday. He will also lay foundation stones for significant development projects worth over seventeen thousand nine hundred crore. The new airport is designed to handle six million passengers annually and boost regional connectivity. Foundation stone will be laid for Andhra Pradesh's first semiconductor manufacturing facility.",
+    "image": "https://static.toiimg.com/photo/msid-132781026,imgsize-1198837.cms",
+    "source_url": "https://timesofindia.indiatimes.com/business/india-business/pm-modi-inaugurate-rs-5640-crore-alluri-sitarama-raju-international-airport-in-andhra-pradesh-see-pics/articleshow/132780911.cms",
+    "source_name": "timesofindia.indiatimes.com",
+    "tags": [
+      "business"
+    ],
+    "date": "2026-08-01T04:20:05.000Z"
+  },
+  {
+    "headline": "Complaint Filed Against Pappu Yadav Over 'Temple Donation Theft' Act In Parliament",
+    "body": "Opposition MPs used street theatre to target the central government over the alleged Ram Mandir donation \"theft\" in Parliament complex on Friday",
+    "full_body": "Opposition MPs used street theatre to target the central government over the alleged Ram Mandir donation \"theft\" in Parliament complex on Friday",
+    "image": "",
+    "source_url": "https://www.ndtv.com/india-news/ram-mandir-donation-theft-case-complaint-filed-against-pappu-yadav-over-temple-donation-theft-act-in-parliament-11851253#publisher=newsstand",
+    "source_name": "ndtv.com",
+    "tags": [
+      "politics"
+    ],
+    "date": "2026-08-01T04:17:04.000Z"
+  },
+  {
+    "headline": "US F-35 Fighter Jet Crashes Near California Military Base, Pilot Ejects Safely",
+    "body": "A US F-35 fighter jet crashed Friday near a military base in San Diego, but the pilot was able to eject before impact, officials said.",
+    "full_body": "A US F-35 fighter jet crashed Friday near a military base in San Diego, but the pilot was able to eject before impact, officials said.",
+    "image": "",
+    "source_url": "https://www.ndtv.com/world-news/us-fighter-jet-crashes-near-california-military-base-11850608#publisher=newsstand",
+    "source_name": "ndtv.com",
+    "tags": [
+      "politics",
+      "business"
+    ],
+    "date": "2026-08-01T04:06:01.000Z"
+  },
+  {
+    "headline": "\"His Approach Was Risky\": Mountaineers On Nirmal Purja's Legendary Climbs",
+    "body": "Ten climbers, including the legendary Nepalese mountaineer, Nirmal Purja, were reported missing after an avalanche struck Broad Peak in PoK on Thursday.",
+    "full_body": "Ten climbers, including the legendary Nepalese mountaineer, Nirmal Purja, were reported missing after an avalanche struck Broad Peak in PoK on Thursday.",
+    "image": "",
+    "source_url": "https://www.ndtv.com/india-news/nirmal-nims-purja-broad-peak-missing-his-approach-was-risky-mountaineers-on-nirmal-purjas-legendary-climbs-avalanche-in-pok-nepalese-mountaineer-11851202#publisher=newsstand",
+    "source_name": "ndtv.com",
+    "tags": [
+      "politics"
+    ],
+    "date": "2026-08-01T03:53:33.000Z"
+  },
+  {
+    "headline": "FSSAI cracks down on three firms over food safety violations",
+    "body": "FSSAI recalls raisins over excessive pesticide residues, suspends a nutraceutical licence and bans folinic acid syrup over misleading claims.",
+    "full_body": "FSSAI recalls raisins over excessive pesticide residues, suspends a nutraceutical licence and bans folinic acid syrup over misleading claims.",
+    "image": "https://static.toiimg.com/photo/msid-132780611,imgsize-82544.cms",
+    "source_url": "https://timesofindia.indiatimes.com/india/fssai-cracks-down-on-three-firms-over-food-safety-violations/articleshow/132780538.cms",
+    "source_name": "timesofindia.indiatimes.com",
+    "tags": [
+      "politics",
+      "business"
+    ],
+    "date": "2026-08-01T03:35:02.000Z"
+  },
+  {
+    "headline": "FIFA abandons $4.2-billion World Cup stake sale plan after global backlash",
+    "body": "FIFA has withdrawn its plan to sell a stake in its commercial operations. Strong opposition from football federations led to the proposal's abandonment. FIFA President Gianni Infantino announced the decision after listening to all views. Major continental bodies like UEFA and CONCACAF rejected the plan. Infantino will now seek other ways to strengthen global football.",
+    "full_body": "FIFA has withdrawn its plan to sell a stake in its commercial operations. Strong opposition from football federations led to the proposal's abandonment. FIFA President Gianni Infantino announced the decision after listening to all views. Major continental bodies like UEFA and CONCACAF rejected the plan. Infantino will now seek other ways to strengthen global football.",
+    "image": "https://static.toiimg.com/photo/msid-132780429,imgsize-1122880.cms",
+    "source_url": "https://timesofindia.indiatimes.com/business/international-business/fifa-abandons-4-2-billion-world-cup-stake-sale-plan-after-global-backlash/articleshow/132780194.cms",
+    "source_name": "timesofindia.indiatimes.com",
+    "tags": [
+      "business"
+    ],
+    "date": "2026-08-01T03:23:23.000Z"
+  },
+  {
+    "headline": "'Same people who litter here, use dustbin abroad': Bombay HC on civic sense",
+    "body": "A bench of Justices G S Kulkarni and Aarti Sathe made the observations while hearing a batch of petitions over pollution, foul odour, gas emissions and health hazards linked to the Kanjurmarg dumping ground in Mumbai. The judges said public participation was essential to keeping the city clean and urged civic authorities to enforce the rules without hesitation.",
+    "full_body": "A bench of Justices G S Kulkarni and Aarti Sathe made the observations while hearing a batch of petitions over pollution, foul odour, gas emissions and health hazards linked to the Kanjurmarg dumping ground in Mumbai. The judges said public participation was essential to keeping the city clean and urged civic authorities to enforce the rules without hesitation.",
+    "image": "https://static.toiimg.com/photo/msid-132780355,imgsize-166525.cms",
+    "source_url": "https://timesofindia.indiatimes.com/india/same-people-who-litter-here-use-dustbin-abroad-bombay-hc-on-civic-sense/articleshow/132780340.cms",
+    "source_name": "timesofindia.indiatimes.com",
+    "tags": [
+      "politics",
+      "business"
+    ],
+    "date": "2026-08-01T03:15:20.000Z"
+  },
+  {
+    "headline": "First J&amp;K terror attack on migrants in 21 months: Two Chhattisgarh labourers die after being shot",
+    "body": "One of the labourers, identified as Deepak Ratray, died before he could be shifted to a hospital. The second victim, Bopinder, was initially admitted to Government Medical College (GMC) Anantnag before being referred to SKIMS Hospital in Soura, where he later succumbed to his injuries. Officials said both victims were in their twenties and had travelled from Chhattisgarh in search of work.",
+    "full_body": "One of the labourers, identified as Deepak Ratray, died before he could be shifted to a hospital. The second victim, Bopinder, was initially admitted to Government Medical College (GMC) Anantnag before being referred to SKIMS Hospital in Soura, where he later succumbed to his injuries. Officials said both victims were in their twenties and had travelled from Chhattisgarh in search of work.",
+    "image": "https://static.toiimg.com/photo/msid-132779873,imgsize-186775.cms",
+    "source_url": "https://timesofindia.indiatimes.com/india/first-jk-terror-attack-on-migrants-in-21-months-two-chhattisgarh-labourers-die-after-being-shot/articleshow/132779775.cms",
+    "source_name": "timesofindia.indiatimes.com",
+    "tags": [
+      "politics",
+      "business"
+    ],
+    "date": "2026-08-01T02:37:44.000Z"
+  },
+  {
+    "headline": "India to get plastic notes soon: Why the move is important - explained",
+    "body": "RBI has already floated the tender to source materials for the polymer notes with its currency printing arm Bharatiya Reserve Bank Note Mudran Pvt Ltd inviting global expressions of interest. The step assumes significance because India has discarded around Rs 50 trillion worth of soiled notes in the last decade.",
+    "full_body": "RBI has already floated the tender to source materials for the polymer notes with its currency printing arm Bharatiya Reserve Bank Note Mudran Pvt Ltd inviting global expressions of interest. The step assumes significance because India has discarded around Rs 50 trillion worth of soiled notes in the last decade.",
+    "image": "https://static.toiimg.com/photo/msid-132765717,imgsize-683217.cms",
+    "source_url": "https://timesofindia.indiatimes.com/business/india-business/india-to-get-plastic-notes-soon-rbi-polymer-currency-why-the-move-is-important-explained/articleshow/132764423.cms",
+    "source_name": "timesofindia.indiatimes.com",
+    "tags": [
+      "business"
+    ],
+    "date": "2026-07-31T12:26:41.000Z"
+  },
+  {
     "headline": "139 Indians released from Russian Army, 2 dozen remain: MEA warns against shady job offers",
     "body": "Read the full article for more details.",
     "full_body": "Read the full article for more details.",
@@ -1528,130 +1678,5 @@
       "business"
     ],
     "date": "2026-07-26T09:45:56.000Z"
-  },
-  {
-    "headline": "NDTV Profit Business Leadership Awards 2026: All About It",
-    "body": "The awards will be judged by an independent jury led by Sunil Bharti Mittal, Founder and Chairman of Bharti Enterprises.",
-    "full_body": "The awards will be judged by an independent jury led by Sunil Bharti Mittal, Founder and Chairman of Bharti Enterprises.",
-    "image": "",
-    "source_url": "https://www.ndtv.com/india-news/ndtv-profit-business-leadership-awards-2026-all-about-it-11823122#publisher=newsstand",
-    "source_name": "ndtv.com",
-    "tags": [
-      "politics"
-    ],
-    "date": "2026-07-26T05:39:14.000Z"
-  },
-  {
-    "headline": "As Dharmendra Pradhan Quits, Jagan Reddy Demands Andhra Education Minister's Resignation",
-    "body": "YSRCP has alleged manipulation of Sports Quota recruitment through successive Government Orders and questioned the government's failure to publish merit and roster lists.",
-    "full_body": "YSRCP has alleged manipulation of Sports Quota recruitment through successive Government Orders and questioned the government's failure to publish merit and roster lists.",
-    "image": "",
-    "source_url": "https://www.ndtv.com/india-news/as-dharmendra-pradhan-quits-jagan-reddy-demands-andhra-education-ministers-resignation-11823137#publisher=newsstand",
-    "source_name": "ndtv.com",
-    "tags": [
-      "politics"
-    ],
-    "date": "2026-07-26T05:30:42.000Z"
-  },
-  {
-    "headline": "Asaduddin Owaisi's UP Offer To Akhilesh Yadav. BJP's 'Friend Request' Jibe",
-    "body": "UP elections 2027: Asaduddin Owaisi has sent out a message to Samajwadi chief Akhilesh Yadav that now is the time for talks, before it's too late.",
-    "full_body": "UP elections 2027: Asaduddin Owaisi has sent out a message to Samajwadi chief Akhilesh Yadav that now is the time for talks, before it's too late.",
-    "image": "",
-    "source_url": "https://www.ndtv.com/india-news/uttar-pradesh-elections-2027-asaduddin-owaisi-alliance-offer-to-akhilesh-yadav-11823016#publisher=newsstand",
-    "source_name": "ndtv.com",
-    "tags": [
-      "politics"
-    ],
-    "date": "2026-07-26T05:18:05.000Z"
-  },
-  {
-    "headline": "'Every misadventure by Pakistan will draw response beyond their imagination': Rajnath Singh on Vijay Diwas",
-    "body": "#WATCH | Kargil Vijay Diwas | Drass: Defence Minister Rajnath Singh says, \"Our intention is clear. There will be no talks with Pakistan.",
-    "full_body": "#WATCH | Kargil Vijay Diwas | Drass: Defence Minister Rajnath Singh says, \"Our intention is clear. There will be no talks with Pakistan.",
-    "image": "https://static.toiimg.com/photo/msid-132636606,imgsize-199485.cms",
-    "source_url": "https://timesofindia.indiatimes.com/india/every-misadventure-by-pakistan-will-draw-response-beyond-their-imagination-rajnath-singh-on-vijay-diwas/articleshow/132636400.cms",
-    "source_name": "timesofindia.indiatimes.com",
-    "tags": [
-      "politics",
-      "business"
-    ],
-    "date": "2026-07-26T05:12:15.000Z"
-  },
-  {
-    "headline": "Pradhan offered to quit on first day of student protest? BJP leader's big claim",
-    "body": "MP minister Vijayvargiya, speaking to news agency PTI in Indore on Saturday, said Pradhan had informed the BJP leadership that he was willing to resign if the party believed it was necessary. \"On the first day, as soon as the student agitation began, Pradhan had told the BJP president that if he felt it was necessary, he was ready to resign as education minister,\" Vijayvargiya said.",
-    "full_body": "MP minister Vijayvargiya, speaking to news agency PTI in Indore on Saturday, said Pradhan had informed the BJP leadership that he was willing to resign if the party believed it was necessary. \"On the first day, as soon as the student agitation began, Pradhan had told the BJP president that if he felt it was necessary, he was ready to resign as education minister,\" Vijayvargiya said.",
-    "image": "https://static.toiimg.com/photo/msid-132636561,imgsize-1185512.cms",
-    "source_url": "https://timesofindia.indiatimes.com/india/pradhan-offered-to-quit-on-first-day-of-student-protest-bjp-leaders-big-claim/articleshow/132636485.cms",
-    "source_name": "timesofindia.indiatimes.com",
-    "tags": [
-      "politics",
-      "business"
-    ],
-    "date": "2026-07-26T05:01:55.000Z"
-  },
-  {
-    "headline": "Detergent Found In Milk: Inside NDTV's Investigation At Maharashtra Testing Lab",
-    "body": "Adulterators often prepare synthetic or fake milk by mixing water, urea and other inexpensive chemicals. However, to recreate the appearance of real milk, they add detergent.",
-    "full_body": "Adulterators often prepare synthetic or fake milk by mixing water, urea and other inexpensive chemicals. However, to recreate the appearance of real milk, they add detergent.",
-    "image": "",
-    "source_url": "https://www.ndtv.com/india-news/detergent-found-in-milk-inside-ndtvs-investigation-at-maharashtra-testing-lab-11822935#publisher=newsstand",
-    "source_name": "ndtv.com",
-    "tags": [
-      "politics",
-      "business"
-    ],
-    "date": "2026-07-26T04:50:05.000Z"
-  },
-  {
-    "headline": "Bhopal Court Rejects Bail Plea Of Ex-Judge Giribala Singh In Twisha Sharma Death Case",
-    "body": "Giribala Singh is the mother-in-law of Twisha, who was allegedly found hanging at her marital home here on May 12. Giribala Singh and her son Samarth Singh were later arrested on charges of dowry-related harassment",
-    "full_body": "Giribala Singh is the mother-in-law of Twisha, who was allegedly found hanging at her marital home here on May 12. Giribala Singh and her son Samarth Singh were later arrested on charges of dowry-related harassment",
-    "image": "",
-    "source_url": "https://www.ndtv.com/india-news/twisha-sharma-death-case-news-bhopal-court-rejects-bail-plea-of-ex-judge-giribala-singh-in-twisha-sharma-death-case-11822994#publisher=newsstand",
-    "source_name": "ndtv.com",
-    "tags": [
-      "politics",
-      "business"
-    ],
-    "date": "2026-07-26T04:38:38.000Z"
-  },
-  {
-    "headline": "Nepal eases rules on Indian currency, allows Rs 200 and Rs 500 notes up to Rs 25,000",
-    "body": "NEW DELHI: Nepal has eased restrictions on the movement of Indian currency, allowing Indian and Nepali citizens to carry Indian Rs 200 and Rs 500 notes issued after November 9, 2016. According to the Nepal Rastra Bank (NRB), the permitted notes can be carried into or taken out of Nepal up to a limit of Rs 25,000 per person.",
-    "full_body": "NEW DELHI: Nepal has eased restrictions on the movement of Indian currency, allowing Indian and Nepali citizens to carry Indian Rs 200 and Rs 500 notes issued after November 9, 2016. According to the Nepal Rastra Bank (NRB), the permitted notes can be carried into or taken out of Nepal up to a limit of Rs 25,000 per person.",
-    "image": "https://static.toiimg.com/photo/msid-132636196,imgsize-133914.cms",
-    "source_url": "https://timesofindia.indiatimes.com/india/nepal-eases-rules-on-indian-currency-allows-rs-200-and-rs-500-notes-up-to-rs-25000/articleshow/132636189.cms",
-    "source_name": "timesofindia.indiatimes.com",
-    "tags": [
-      "politics",
-      "business"
-    ],
-    "date": "2026-07-26T04:12:17.000Z"
-  },
-  {
-    "headline": "Tariffs on trial: Small businesses take Trump's latest trade levies back to court",
-    "body": "Two groups of small businesses are challenging Donald Trump's latest tariffs in court. These new levies target goods from sixty trading partners and cover nearly all US imports. Businesses argue the administration failed to justify these measures against individual economies. They contend the tariffs replace previous worldwide duties struck down by the Supreme Court. Legal experts believe these new tariffs will likely remain in place for an extended period.",
-    "full_body": "Two groups of small businesses are challenging Donald Trump's latest tariffs in court. These new levies target goods from sixty trading partners and cover nearly all US imports. Businesses argue the administration failed to justify these measures against individual economies. They contend the tariffs replace previous worldwide duties struck down by the Supreme Court. Legal experts believe these new tariffs will likely remain in place for an extended period.",
-    "image": "https://static.toiimg.com/photo/msid-132635759,imgsize-126338.cms",
-    "source_url": "https://timesofindia.indiatimes.com/business/international-business/tariffs-on-trial-small-businesses-take-trumps-latest-trade-levies-back-to-court/articleshow/132635756.cms",
-    "source_name": "timesofindia.indiatimes.com",
-    "tags": [
-      "business"
-    ],
-    "date": "2026-07-26T02:39:28.000Z"
-  },
-  {
-    "headline": "Energy security in focus: What India’s crude oil, LPG and LNG strategic reserves strategy should look like",
-    "body": "Once completed, the total strategic petroleum reserves capacity will increase to 11.88 MMT, enabling India to move significantly closer to the 90-day reserve target. India is working with the UAE for 30 million barrels of crude of storage capacity.",
-    "full_body": "Once completed, the total strategic petroleum reserves capacity will increase to 11.88 MMT, enabling India to move significantly closer to the 90-day reserve target. India is working with the UAE for 30 million barrels of crude of storage capacity.",
-    "image": "https://static.toiimg.com/photo/msid-132626327,imgsize-642429.cms",
-    "source_url": "https://timesofindia.indiatimes.com/business/india-business/energy-security-in-focus-what-indias-crude-oil-lpg-and-lng-strategic-reserves-strategy-should-look-like/articleshow/132626217.cms",
-    "source_name": "timesofindia.indiatimes.com",
-    "tags": [
-      "business"
-    ],
-    "date": "2026-07-25T13:01:15.000Z"
   }
 ]
